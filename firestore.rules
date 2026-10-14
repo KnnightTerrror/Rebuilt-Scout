@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each team's data lives under w/<team code>. The long random team code works like a
+    // shared password: anyone who has it (or the invite link) can read and add data.
+    match /w/{team}/{rest=**} {
+      allow read, write: if request.auth != null && team.size() >= 16;
+    }
+  }
+}

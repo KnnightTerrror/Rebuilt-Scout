@@ -1,0 +1,1446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>REBUILT Scout</title>
+<meta name="description" content="Scouting app for the FRC 2026 game REBUILT: match and pit scouting, rankings, picklist and pre-match briefs.">
+<meta name="theme-color" content="#14181d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Scout">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: phone-first app shell — sticky top bar, one scrolling view, fixed bottom tab bar. Steel neutrals, FUEL-yellow accent, alliance red/blue as semantic. */
+:root{
+  --bg:#e9ecef; --surface:#ffffff; --surface-2:#f4f6f8; --line:#d3d9df; --fg:#14181d; --muted:#5b6672;
+  --accent:#f2b705; --accent-ink:#1a1400; --accent-soft:#fdf1c4;
+  --red:#c8323a; --red-soft:#f8dfe0; --blue:#1f5fbf; --blue-soft:#dce7f8;
+  --good:#1d8a4e; --good-soft:#d9f0e2; --warn:#b26a00; --warn-soft:#fbe9cc; --bad:#c8323a; --bad-soft:#f8dfe0;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101317; --surface:#181c22; --surface-2:#1f242b; --line:#2c333c; --fg:#e8ecf0; --muted:#97a2ae;
+  --accent:#f5c22b; --accent-ink:#1a1400; --accent-soft:#3a3210;
+  --red:#ff6b72; --red-soft:#3d1c1f; --blue:#6fa2ff; --blue-soft:#18273f;
+  --good:#4cc782; --good-soft:#163323; --warn:#f0a53a; --warn-soft:#3a2a12; --bad:#ff6b72; --bad-soft:#3d1c1f;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101317; --surface:#181c22; --surface-2:#1f242b; --line:#2c333c; --fg:#e8ecf0; --muted:#97a2ae;
+  --accent:#f5c22b; --accent-ink:#1a1400; --accent-soft:#3a3210;
+  --red:#ff6b72; --red-soft:#3d1c1f; --blue:#6fa2ff; --blue-soft:#18273f;
+  --good:#4cc782; --good-soft:#163323; --warn:#f0a53a; --warn-soft:#3a2a12; --bad:#ff6b72; --bad-soft:#3d1c1f;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{margin:0;font-family:var(--f-body);font-size:15px;line-height:1.45;padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+h1,h2,h3{font-family:var(--f-display);letter-spacing:.01em;margin:0;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.wrap{max-width:980px;margin:0 auto;padding-inline:16px}
+p{margin:0}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.brand{display:flex;align-items:baseline;gap:8px;min-width:0}
+.brand h1{font-size:24px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.brand h1 b{background:var(--accent);color:var(--accent-ink);padding:0 6px;border-radius:4px}
+.evt{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{background:var(--good-soft);color:var(--good);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav .wrap{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding-block:6px}
+.nav button{border:0;background:none;padding:6px 2px;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.nav button svg{width:22px;height:22px}
+.nav button[aria-current="page"]{color:var(--fg);background:var(--accent-soft)}
+.nav button[aria-current="page"] svg{color:var(--accent)}
+
+main{padding-block:16px 24px}
+.view{display:grid;gap:14px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:12px;min-width:0}
+.sec-h{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.sec-h h2{font-size:22px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.sec-h .tag{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.page-h{font-size:28px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stack{display:grid;gap:4px;align-content:start;min-width:0}
+label.f{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--muted);min-width:0}
+input[type=text],input[type=number],input[type=search],input[type=password],select,textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--fg);font-size:16px}
+textarea{min-height:84px;resize:vertical}
+.lbl{font-size:13px;font-weight:600;color:var(--muted)}
+.legend{font-size:13px;color:var(--muted)}
+code{font-family:var(--f-mono);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+
+/* sub tabs */
+.subnav{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;overflow-x:auto}
+.subnav button{flex:1 0 auto;border:0;background:none;border-radius:999px;padding:8px 14px;font-family:var(--f-display);font-weight:700;font-size:16px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap}
+.subnav button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;justify-content:center;text-decoration:none;color:var(--fg)}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-family:var(--f-display);font-size:19px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:12px 18px}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* segmented picks */
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;min-width:64px;border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:10px 10px;font-weight:600;cursor:pointer;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.seg.red button[aria-pressed="true"][data-v="red"]{background:var(--red);border-color:var(--red);color:#fff}
+.seg.red button[aria-pressed="true"][data-v="blue"]{background:var(--blue);border-color:var(--blue);color:#fff}
+.tog{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:10px 12px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;font-size:14px}
+.tog::before{content:"";width:18px;height:18px;border-radius:5px;border:2px solid var(--muted);flex:none}
+.tog[aria-pressed="true"]{border-color:var(--fg)}
+.tog[aria-pressed="true"]::before{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--surface-2)}
+.tog.badtog[aria-pressed="true"]{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.tog.badtog[aria-pressed="true"]::before{background:var(--bad);border-color:var(--bad)}
+
+/* counters */
+.counter{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:grid;gap:8px}
+.counter .ch{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.counter .ch span{font-weight:600;font-size:14px}
+.counter .val{font-family:var(--f-mono);font-size:30px;font-weight:700;line-height:1}
+.counter .btns{display:grid;gap:6px}
+.counter .btns button{border:0;border-radius:8px;padding:14px 4px;font-family:var(--f-mono);font-weight:700;font-size:17px;cursor:pointer;background:var(--accent);color:var(--accent-ink);touch-action:manipulation}
+.counter .btns button.minus{background:var(--surface);border:1px solid var(--line);color:var(--fg);padding-inline:14px}
+.counter.missc .btns button:not(.minus){background:var(--fg);color:var(--bg)}
+
+/* rating */
+.rate{display:grid;grid-template-columns:minmax(110px,150px) 1fr;align-items:center;gap:8px}
+.rate .seg button{min-width:40px;padding:9px 0;font-family:var(--f-mono)}
+.rate .seg button[data-v="0"]{font-family:var(--f-body);font-size:12px;min-width:44px}
+.rate .seg button[aria-pressed="true"]:not([data-v="0"]){background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+/* timer + assignment card */
+.timer{display:flex;align-items:center;gap:12px;background:var(--fg);color:var(--bg);border-radius:var(--r);padding:10px 14px;flex-wrap:wrap}
+.timer .t{font-family:var(--f-mono);font-size:28px;font-weight:700}
+.timer .ph{font-family:var(--f-display);font-size:20px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.timer .bar{flex:1 1 100%;height:6px;background:color-mix(in srgb,var(--bg) 25%,transparent);border-radius:3px;overflow:hidden;display:flex}
+.timer .bar i{display:block;height:100%;background:var(--accent)}
+.timer .btn{margin-left:auto;background:var(--accent);color:var(--accent-ink);border:0}
+.assign{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);padding:10px 14px}
+.assign .big{font-family:var(--f-display);font-size:22px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.assign .btn{margin-left:auto}
+
+/* tables */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-display);font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface-2);user-select:none}
+th[data-sort]{cursor:pointer}
+th.l,td.l{text-align:left}
+th[aria-sort]{color:var(--fg)}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--surface-2)}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.best{background:var(--good-soft);color:var(--good);font-weight:700}
+tr.ours td{background:var(--accent-soft)}
+.team-n{font-family:var(--f-mono);font-weight:700;font-size:15px}
+.tn-red{color:var(--red)} .tn-blue{color:var(--blue)}
+.score{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end}
+.score .sb{width:54px;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;border:1px solid var(--line)}
+.score .sb i{display:block;height:100%;background:var(--accent)}
+.rk{font-family:var(--f-display);font-weight:800;font-size:18px;text-align:left}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.pill.acc{background:var(--accent-soft);border-color:transparent}
+
+/* team detail */
+.overlay{position:fixed;inset:0;z-index:40;background:color-mix(in srgb,#000 45%,transparent);display:flex;justify-content:flex-end}
+.panel{width:min(680px,100%);height:100%;background:var(--bg);overflow-y:auto;padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px));display:grid;gap:14px;align-content:start}
+.ph-head{display:flex;align-items:flex-start;gap:12px}
+.ph-head .big{font-family:var(--f-mono);font-size:40px;font-weight:700;line-height:1}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px}
+.stat .k{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat .v{font-family:var(--f-mono);font-size:22px;font-weight:700}
+.bars{display:grid;gap:8px}
+.barrow{display:grid;grid-template-columns:120px 1fr 40px;gap:10px;align-items:center;font-size:14px}
+.barrow .track{height:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.barrow .track i{display:block;height:100%;background:var(--accent)}
+.notes{display:grid;gap:8px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:grid;gap:4px}
+.note.weakness{border-left:4px solid var(--bad)}
+.note.strength{border-left:4px solid var(--good)}
+.note.strategy{border-left:4px solid var(--blue)}
+.note .meta{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.note p{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* charts */
+.chart{display:grid;gap:6px;min-width:0}
+.chart svg{width:100%;height:auto;display:block;overflow:visible}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .ax{fill:var(--muted);font-family:var(--f-mono);font-size:11px}
+.chart .dl{fill:var(--fg);font-family:var(--f-mono);font-size:12px;font-weight:700}
+.chart .avg{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4}
+.chart .hit{fill:transparent;cursor:crosshair}
+.keys{display:flex;flex-wrap:wrap;gap:12px;font-size:13px}
+.keys span{display:inline-flex;align-items:center;gap:6px}
+.keys i{width:12px;height:12px;border-radius:3px;display:inline-block}
+#tip{position:fixed;z-index:60;pointer-events:none;background:var(--fg);color:var(--bg);padding:6px 10px;border-radius:8px;font-size:13px;font-weight:600;max-width:260px}
+
+/* alliances / brief */
+.alli{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.acol{display:grid;gap:10px;align-content:start;min-width:0}
+.ahead{border-radius:var(--r);padding:12px 14px;display:grid;gap:6px}
+.ahead.red{background:var(--red-soft);border:1px solid var(--red)}
+.ahead.blue{background:var(--blue-soft);border:1px solid var(--blue)}
+.ahead h3{font-size:22px;text-transform:uppercase;letter-spacing:.04em}
+.ahead.red h3{color:var(--red)} .ahead.blue h3{color:var(--blue)}
+.ahead .pts{font-family:var(--f-mono);font-size:30px;font-weight:700}
+.tcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:8px;cursor:pointer;min-width:0}
+.tcard:hover{border-color:var(--muted)}
+.tcard.ours{border:2px solid var(--accent)}
+.tcard .tt{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.tcard .kv{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.tcard .kv b{font-family:var(--f-mono)}
+.tcard .wk{font-size:13px;border-left:3px solid var(--bad);padding-left:8px;overflow-wrap:anywhere}
+
+/* picklist */
+.pl{display:grid;gap:6px;padding:0;margin:0;list-style:none}
+.pl li{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;flex-wrap:wrap}
+.pl li .pos{font-family:var(--f-display);font-weight:800;font-size:20px;width:30px}
+.pl li .info{flex:1;min-width:140px}
+.pl li.dnp{opacity:.6}
+.pl li.dnp .team-n{text-decoration:line-through}
+
+/* flags */
+.flags{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.flags li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;background:var(--surface-2);border-radius:8px;padding:8px 10px;cursor:pointer}
+.flags li:hover{outline:1px solid var(--line)}
+
+/* transfer */
+.qrwrap{display:grid;gap:10px;justify-items:center}
+.qr{width:min(100%,360px);image-rendering:pixelated;background:#fff;border-radius:8px;padding:6px}
+video.scan{width:100%;max-width:420px;border-radius:var(--r);background:#000;justify-self:center}
+
+.empty{padding:28px 16px;text-align:center;display:grid;gap:8px;justify-items:center;color:var(--muted)}
+.empty h3{font-size:22px;color:var(--fg)}
+.empty p{max-width:60ch}
+.banner{border-radius:var(--r);padding:10px 14px;font-size:14px;background:var(--warn-soft);color:var(--warn);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner .btn{margin-left:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:70;background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;max-width:calc(100% - 32px);text-align:center}
+details summary{cursor:pointer;font-weight:600}
+@media (max-width:520px){
+  .brand h1{font-size:20px}
+  .rate{grid-template-columns:1fr}
+  .barrow{grid-template-columns:96px 1fr 36px}
+  .subnav button{font-size:14px;padding:8px 10px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1><b>REBUILT</b> Scout</h1></div>
+    <div class="evt">
+      <span class="chip" title="Current event">Event: <span class="mono" id="evtName">—</span></span>
+      <span class="chip" id="syncChip"><span class="dot"></span><span id="syncTxt">Connecting…</span></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<nav class="nav" aria-label="Sections">
+  <div class="wrap">
+    <button data-tab="scout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Scout</button>
+    <button data-tab="teams"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Teams</button>
+    <button data-tab="matches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Matches</button>
+    <button data-tab="pick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>Picklist</button>
+    <button data-tab="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>More</button>
+  </div>
+</nav>
+
+<div id="overlayRoot"></div>
+<div id="toastRoot" aria-live="polite"></div>
+<div id="tip" hidden></div>
+
+<script src="config.js"></script>
+<script>
+(() => {
+"use strict";
+// BUILD is "site" (standalone website, Firebase sync) or "artifact" (claude.ai page, built-in shared db)
+const BUILD = "site";
+const SITE = BUILD === "site";
+const CONF = window.SCOUT_CONFIG || {};
+const HAS_FB = SITE && !!(CONF.firebase && CONF.firebase.apiKey);
+const LIB = {
+  qr: "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js",
+  jsqr: "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+  fb: ["app","auth","firestore"].map(m => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${m}-compat.js`)
+};
+
+// ---------- constants ----------
+const DEFAULT_CFG = { fuelAuto:1, fuelTele:1, autoClimb:15, L1:10, L2:20, L3:30, wPts:50, wRate:30, wRel:20, rpFuel1:100, rpFuel2:360, rpTower:50, ourTeam:"", tbaKey:"" };
+const NUM_CFG = ["fuelAuto","fuelTele","autoClimb","L1","L2","L3","wPts","wRate","wRel","rpFuel1","rpFuel2","rpTower"];
+const RATINGS = [["r_shooter","Shooter"],["r_intake","Intake speed"],["r_storage","Storage / capacity"],["r_accuracy","Accuracy"],["r_driving","Driving"],["r_defense","Defense"],["r_climber","Climber"]];
+const FLOW = [["single","One at a time"],["burst","Few per volley"],["stream","Constant stream"]];
+const AIM = [["turret","Turret (no aiming)"],["lineup","Must line up"],["move","Shoots on the move"]];
+const DRIVE = [["swerve","Swerve"],["tank","Tank"],["mecanum","Mecanum"],["other","Other"]];
+const CLIMB = [["none","None"],["fail","Failed"],["L1","Level 1"],["L2","Level 2"],["L3","Level 3"]];
+const MECHS = [["shooter","Shooter"],["intake","Intake"],["climber","Climber"],["drive","Drivetrain"],["storage","Storage"]];
+const PHASES = [[0,20,"Auto"],[20,30,"Transition"],[30,55,"Shift 1"],[55,80,"Shift 2"],[80,105,"Shift 3"],[105,130,"Shift 4"],[130,160,"End game"]];
+const POS = ["R1","R2","R3","B1","B2","B3"];
+const POS_LBL = {R1:"Red 1",R2:"Red 2",R3:"Red 3",B1:"Blue 1",B2:"Blue 2",B3:"Blue 3"};
+const LBL = Object.fromEntries([...FLOW,...AIM,...DRIVE,...CLIMB,...MECHS]);
+const TABS = ["scout","teams","matches","pick","more"];
+const COLLS = ["entries","teams","notes","picklist","schedule","roster"];
+// QR transfer: compact field order
+const QF = ["id","event","match","team","alliance","station","scoutName","noShow","autoLeave","autoFuel","autoMiss","autoClimb","teleFuel","teleMiss","volleys","defense","bump","trench","flow","aim","drive","climb",...RATINGS.map(r=>r[0]),"m_died","m_stuck","m_tipped","m_broke","broken","fouls","card","notes","ts"];
+const BOOLF = new Set(["noShow","autoLeave","autoClimb","defense","bump","trench","m_died","m_stuck","m_tipped","m_broke"]);
+const NUMF = new Set(["match","autoFuel","autoMiss","teleFuel","teleMiss","volleys","fouls","ts",...RATINGS.map(r=>r[0])]);
+
+// ---------- helpers ----------
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+const sum = a => a.reduce((x,y)=>x+(y||0),0);
+const f1 = v => v==null ? "—" : (Math.round(v*10)/10).toString();
+const pct = v => v==null ? "—" : Math.round(v*100)+"%";
+const norm = s => String(s||"").trim().toLowerCase();
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem("rs_"+k); return v==null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem("rs_"+k, JSON.stringify(v)); }catch{} }
+};
+const safeSeg = s => String(s||"").replace(/[^A-Za-z0-9_\-.~:@+]/g,"").slice(0,80) || "x";
+const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const mode = arr => { const m = {}; let best=null, bc=0; arr.filter(Boolean).forEach(v => { m[v]=(m[v]||0)+1; if(m[v]>bc){bc=m[v];best=v;} }); return best; };
+const pressed = b => `aria-pressed="${b?"true":"false"}"`;
+const scripts = {};
+function loadScript(src){
+  return scripts[src] || (scripts[src] = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = src; s.async = false;
+    s.onload = res; s.onerror = () => { delete scripts[src]; rej(new Error("Could not load "+src)); };
+    document.head.appendChild(s);
+  }));
+}
+let toastT;
+function toast(msg){ const r=$("#toastRoot"); r.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toastT); toastT=setTimeout(()=>r.innerHTML="",2800); }
+const buzz = () => { try{ navigator.vibrate && navigator.vibrate(8); }catch{} };
+
+// ---------- state ----------
+const S = {
+  backend:"local", connecting:true, db:null, uid:null, live:false, readOnly:false, pending:0, ver:0,
+  c:Object.fromEntries(COLLS.map(n=>[n,new Map()])), cfg:{...DEFAULT_CFG},
+  tab: TABS.includes(ls.get("tab")) ? ls.get("tab") : "scout",
+  sub: {scout:"match", teams:"rank", matches:"schedule", more:"setup", ...ls.get("sub",{})},
+  event: ls.get("event","2026"), showAll:false, sort:{key:"score",dir:-1}, filter:"", openTeam:null,
+  queue: ls.get("queue", []), form:null, timer:null, wake:null, mine: ls.get("mine", []),
+  compare: (()=>{ const c=ls.get("compare",[]); return [0,1,2,3].map(i=>c[i]||null); })(),
+  brief:null, briefTeams:{red:["","",""],blue:["","",""]}, drafts:{}, dirty:false, panelDirty:false,
+  wkey: ls.get("wkey",""), qrMode:"mine", qrIdx:0, scan:null, seen:new Set(), installEvt:null, entriesUnsub:null
+};
+const draft = (k, fallback) => (k in S.drafts) ? S.drafts[k] : fallback;
+const evKey = () => safeSeg(S.event);
+
+function blankForm(prev){
+  return {
+    scoutName: ls.get("scoutName",""), match: prev ? String(num(prev.match)+1) : "", team:"", alliance: prev?.alliance || "", station: prev?.station || "",
+    noShow:false, autoLeave:false, autoFuel:0, autoMiss:0, autoClimb:false,
+    teleFuel:0, teleMiss:0, volleys:0, defense:false, bump:false, trench:false,
+    flow:"", aim:"", drive:"", climb:"none",
+    r_shooter:0,r_intake:0,r_storage:0,r_accuracy:0,r_driving:0,r_defense:0,r_climber:0,
+    m_died:false,m_stuck:false,m_tipped:false,m_broke:false, broken:[], fouls:0, card:"none", notes:""
+  };
+}
+S.form = {...blankForm(), ...(ls.get("draft", null) || {})};
+const saveDraft = () => ls.set("draft", S.form);
+
+// ---------- persistence: shared db + on-device queue ----------
+function remote(op, path, data){ const ref=S.db.doc(path); return op==="set" ? ref.set(data) : ref.delete(); }
+function writeErr(e){
+  const c = e && e.code;
+  if(c==="invalid_argument" || c==="permission-denied"){
+    if(S.backend==="claude"){ S.readOnly=true; setSync(); toast("You can't save to the shared data. Ask the app owner for Contributor access."); }
+    else toast("The team database refused that save. Check the team code in More → Setup.");
+    return;
+  }
+  if(c==="quota_exceeded" || c==="resource-exhausted"){ toast("The shared database is full or over today's limit. Export a backup in More → Setup."); return; }
+  toast("Couldn't save: " + ((e && e.message) || "unknown error"));
+}
+function enqueue(op, path, data){ S.queue = S.queue.filter(x => x.path!==path); S.queue.push({op, path, data}); ls.set("queue", S.queue); S.ver++; setSync(); }
+async function write(op, path, data){
+  S.ver++;
+  if(S.db && S.backend==="firebase"){
+    // Firestore keeps its own offline queue and shows local writes in snapshots right away
+    S.pending++; setSync();
+    remote(op, path, data).then(()=>{ S.pending--; setSync(); }, e=>{ S.pending--; setSync(); writeErr(e); });
+    return navigator.onLine ? true : "queued";
+  }
+  if(S.db){
+    try{ await remote(op, path, data); return true; }
+    catch(e){ if(e && ["invalid_argument","quota_exceeded"].includes(e.code)){ writeErr(e); return false; } }
+  }
+  enqueue(op, path, data);
+  return S.backend==="local" && !S.connecting ? "local" : "queued";
+}
+let flushing = false;
+async function flush(){
+  if(!S.db || flushing || !S.queue.length) return;
+  flushing = true;
+  try{
+    while(S.queue.length){
+      const it = S.queue[0];
+      if(S.backend==="firebase") remote(it.op, it.path, it.data).catch(writeErr);
+      else { try{ await remote(it.op, it.path, it.data); } catch(e){ if(e && e.code==="invalid_argument") S.readOnly=true; break; } }
+      S.queue.shift(); ls.set("queue", S.queue);
+    }
+  } finally { flushing=false; S.ver++; setSync(); renderSoft(); }
+}
+setInterval(()=>{ if(S.queue.length) flush(); }, 30000);
+addEventListener("online", ()=>{ setSync(); if(SITE && HAS_FB && S.wkey && !S.db) initFirebase(); flush(); });
+addEventListener("offline", setSync);
+
+// shared docs merged with anything still waiting on this device
+function coll(name){
+  const out = new Map(S.c[name]);
+  S.queue.forEach(q => { const i=q.path.indexOf("/"); const c=q.path.slice(0,i), id=q.path.slice(i+1);
+    if(c===name){ if(q.op==="set") out.set(id, {...q.data, id:q.data.id||id}); else out.delete(id); } });
+  return out;
+}
+const entriesNow = () => [...coll("entries").values()].filter(e => S.showAll || e.event===S.event);
+const teamsNow = () => coll("teams");
+const notesNow = () => [...coll("notes").values()];
+const cfg = () => ({...DEFAULT_CFG, ...S.cfg});
+const scheduleFor = () => coll("schedule").get(evKey()) || null;
+const rosterFor = () => coll("roster").get(evKey()) || {scouts:[], shift:6};
+function teamName(t){
+  t = String(t); const p = teamsNow().get(t); if(p && p.name) return p.name;
+  for(const s of coll("schedule").values()){ if(s.names && s.names[t]) return s.names[t]; }
+  return "";
+}
+const teamAt = (m, p) => String((p[0]==="R" ? m.red : m.blue)[num(p[1])-1] || "");
+const played = m => m.rs!=null && m.rs>=0;
+
+// ---------- scoring ----------
+function climbPts(c, C){ return c==="L1"?C.L1 : c==="L2"?C.L2 : c==="L3"?C.L3 : 0; }
+function entryPts(e, C=cfg()){
+  if(e.noShow) return 0;
+  return num(e.autoFuel)*C.fuelAuto + (e.autoClimb?C.autoClimb:0) + num(e.teleFuel)*C.fuelTele + climbPts(e.climb, C);
+}
+function agg(team, list, C=cfg()){
+  const es = list.filter(e => String(e.team)===String(team));
+  const pl = es.filter(e => !e.noShow);
+  const r = { team:String(team), n:es.length, played:pl.length };
+  r.pts = avg(pl.map(e=>entryPts(e,C)));
+  r.auto = avg(pl.map(e=>num(e.autoFuel)*C.fuelAuto + (e.autoClimb?C.autoClimb:0)));
+  r.fuel = avg(pl.map(e=>num(e.autoFuel)+num(e.teleFuel)));
+  r.tower = avg(pl.map(e=>(e.autoClimb?C.autoClimb:0)+climbPts(e.climb,C)));
+  const vol = pl.filter(e=>num(e.volleys)>0);
+  r.perVolley = vol.length ? avg(vol.map(e=>num(e.teleFuel)/num(e.volleys))) : null;
+  const sc = sum(pl.map(e=>num(e.autoFuel)+num(e.teleFuel))), ms = sum(pl.map(e=>num(e.autoMiss)+num(e.teleMiss)));
+  r.acc = sc+ms ? sc/(sc+ms) : null;
+  r.climbRate = pl.length ? pl.filter(e=>["L1","L2","L3"].includes(e.climb)).length/pl.length : null;
+  const order = {none:0,fail:0,L1:1,L2:2,L3:3}; r.bestClimb = pl.reduce((b,e)=> (order[e.climb]||0)>order[b]?e.climb:b, "none");
+  r.ratings = {}; RATINGS.forEach(([k]) => r.ratings[k] = avg(pl.map(e=>num(e[k])).filter(v=>v>0)));
+  r.rating = avg(Object.values(r.ratings).filter(v=>v!=null));
+  const bad = e => e.noShow || e.m_died || e.m_stuck || e.m_tipped || e.m_broke || (e.broken||[]).length;
+  r.issues = es.length ? es.filter(bad).length/es.length : null;
+  r.mal = { noShow:es.filter(e=>e.noShow).length, died:es.filter(e=>e.m_died).length, stuck:es.filter(e=>e.m_stuck).length, tipped:es.filter(e=>e.m_tipped).length, broke:es.filter(e=>e.m_broke).length, fouls:sum(es.map(e=>num(e.fouls))) };
+  r.brokenMechs = {}; es.forEach(e => (e.broken||[]).forEach(m => r.brokenMechs[m]=(r.brokenMechs[m]||0)+1));
+  r.flow = mode(es.map(e=>e.flow)); r.aim = mode(es.map(e=>e.aim)); r.drive = mode(es.map(e=>e.drive));
+  r.defense = es.filter(e=>e.defense).length;
+  const byM = new Map(); pl.forEach(e => { const k=num(e.match); if(!byM.has(k)) byM.set(k,[]); byM.get(k).push(e); });
+  r.series = [...byM.entries()].sort((a,b)=>a[0]-b[0]).map(([m,g]) => ({x:m, y:avg(g.map(e=>entryPts(e,C))), fuel:avg(g.map(e=>num(e.autoFuel)+num(e.teleFuel))), climb:g[0].climb}));
+  return r;
+}
+let rankCache = {k:null, v:null};
+function rankAll(){
+  const key = [S.ver, S.event, S.showAll, JSON.stringify(S.cfg)].join("|");
+  if(rankCache.k===key) return rankCache.v;
+  const list = entriesNow(); const C = cfg();
+  const nums = new Set(list.map(e=>String(e.team)));
+  if(!S.showAll) teamsNow().forEach((t,k)=>{ if(Array.isArray(t.events) && t.events.includes(S.event)) nums.add(String(k)); });
+  const rows = [...nums].filter(Boolean).map(t => agg(t, list, C));
+  const maxPts = Math.max(1, ...rows.map(r=>r.pts||0));
+  const wsum = Math.max(1, C.wPts + C.wRate + C.wRel);
+  rows.forEach(r => {
+    if(!r.n){ r.score=null; return; }
+    const p = (r.pts||0)/maxPts*100, q = r.rating!=null ? (r.rating-1)/4*100 : 50, rel = (1-(r.issues||0))*100;
+    r.score = (p*C.wPts + q*C.wRate + rel*C.wRel)/wsum;
+  });
+  rows.sort((a,b)=>(b.score??-1)-(a.score??-1));
+  rows.forEach((r,i)=> r.rank = r.score==null ? null : i+1);
+  rankCache = {k:key, v:rows};
+  return rows;
+}
+const rankMap = () => Object.fromEntries(rankAll().map(r=>[r.team, r]));
+const statsFor = t => rankMap()[String(t)] || agg(String(t), entriesNow());
+
+// ---------- scout assignments ----------
+function assignments(){
+  const sch = scheduleFor(), ro = rosterFor(), out = new Map();
+  const scouts = (ro.scouts||[]).filter(Boolean); if(!sch || !scouts.length) return out;
+  const n = scouts.length, shift = Math.max(1, num(ro.shift)||6);
+  [...sch.matches].sort((a,b)=>a.n-b.n).forEach((m,i) => {
+    const b = Math.floor(i/shift), a = {};
+    if(n >= 6) POS.forEach((p,j) => a[p] = scouts[(b*6+j)%n]);
+    else scouts.forEach((s,k) => a[POS[(k+b)%6]] = s);
+    out.set(m.n, a);
+  });
+  return out;
+}
+function nextAssignment(name){
+  const sch = scheduleFor(); if(!name || !sch) return null;
+  const A = assignments(); if(!A.size) return null;
+  const done = new Set(entriesNow().filter(e=>norm(e.scoutName)===norm(name)).map(e=>num(e.match)));
+  for(const m of [...sch.matches].sort((a,b)=>a.n-b.n)){
+    const a = A.get(m.n); if(!a) continue;
+    const p = POS.find(p => norm(a[p])===norm(name)); if(!p) continue;
+    if(done.has(m.n) || played(m)) continue;
+    return {m, p, team:teamAt(m,p)};
+  }
+  return null;
+}
+
+// ---------- data quality ----------
+function quality(){
+  const C = cfg(), es = entriesNow(), out = {missing:[], disagree:[], outliers:[], official:[], scouts:[]};
+  const fuel = e => num(e.autoFuel)+num(e.teleFuel);
+  const byMT = new Map(), byT = new Map();
+  es.forEach(e => { const k=num(e.match)+"|"+e.team; if(!byMT.has(k)) byMT.set(k,[]); byMT.get(k).push(e); if(!byT.has(e.team)) byT.set(e.team,[]); byT.get(e.team).push(e); });
+  const flags = {}; const flag = n => { const k=n||"Unknown"; flags[k]=(flags[k]||0)+1; };
+  byMT.forEach(g => {
+    if(g.length<2) return;
+    const f = g.map(fuel), lo = Math.min(...f), hi = Math.max(...f), cl = new Set(g.map(e=>e.climb||"none")), reasons = [];
+    if(hi-lo > Math.max(5, .25*hi)) reasons.push(`fuel ${f.join(" vs ")}`);
+    if(cl.size>1) reasons.push(`climb ${[...cl].map(c=>LBL[c]||c).join(" vs ")}`);
+    if(g.some(e=>e.noShow) && !g.every(e=>e.noShow)) reasons.push("no-show");
+    if(reasons.length){ out.disagree.push({match:num(g[0].match), team:g[0].team, scouts:g.map(e=>e.scoutName||"?"), reasons}); g.forEach(e=>flag(e.scoutName)); }
+  });
+  es.forEach(e => {
+    if(e.noShow) return;
+    const others = (byT.get(e.team)||[]).filter(o => o!==e && !o.noShow && num(o.match)!==num(e.match));
+    if(others.length<3) return;
+    const v = others.map(o=>entryPts(o,C)), m = avg(v), sd = Math.sqrt(avg(v.map(x=>(x-m)**2))), p = entryPts(e,C);
+    if(Math.abs(p-m) > Math.max(15, 2.5*sd)){ out.outliers.push({e, p, m}); flag(e.scoutName); }
+  });
+  const sch = scheduleFor();
+  if(sch){
+    const maxM = Math.max(0, ...es.map(e=>num(e.match))), A = assignments();
+    [...sch.matches].sort((a,b)=>a.n-b.n).forEach(m => {
+      if(!(played(m) || m.n<=maxM)) return;
+      POS.forEach(p => { const t=teamAt(m,p); if(t && !byMT.has(m.n+"|"+t)) out.missing.push({match:m.n, pos:p, team:t, scout:(A.get(m.n)||{})[p]||null}); });
+      ["red","blue"].forEach(al => {
+        const off = al==="red" ? m.rs : m.bs; if(off==null || off<0) return;
+        const per = m[al].map(t => { const g=byMT.get(m.n+"|"+t); return g ? avg(g.map(e=>entryPts(e,C))) : null; });
+        if(per.some(x=>x==null)) return;
+        const sc = sum(per); if(Math.abs(sc-off) > Math.max(20, .3*off)) out.official.push({match:m.n, al, sc, off});
+      });
+    });
+  }
+  const byS = new Map();
+  es.forEach(e => { const k=e.scoutName||"Unknown"; if(!byS.has(k)) byS.set(k,[]); byS.get(k).push(e); });
+  byS.forEach((g,name) => {
+    const devs = g.map(e => { const o=(byT.get(e.team)||[]).filter(x=>x!==e && norm(x.scoutName)!==norm(name) && !x.noShow); return o.length>=2 && !e.noShow ? Math.abs(fuel(e)-avg(o.map(fuel))) : null; }).filter(x=>x!=null);
+    out.scouts.push({name, n:g.length, dev:avg(devs), flags:flags[name]||0});
+  });
+  out.scouts.sort((a,b)=>b.n-a.n);
+  return out;
+}
+
+// ---------- rendering ----------
+function setTab(t){ S.tab=t; ls.set("tab",t); markNav(); render(); scrollTo(0,0); }
+function setSub(tab, s){ S.sub[tab]=s; ls.set("sub", S.sub); render(); scrollTo(0,0); }
+function markNav(){ document.querySelectorAll(".nav button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===S.tab?"page":"false")); }
+function render(){
+  setSync();
+  if(S.scan && !(S.tab==="more" && S.sub.more==="transfer")) stopScan();
+  const m = $("#main"), sub = S.sub[S.tab];
+  S.dirty = false;
+  if(S.tab==="scout") m.innerHTML = subnav("scout",[["match","Match"],["pit","Pit"]]) + (sub==="pit" ? vPit() : vScout());
+  else if(S.tab==="teams") m.innerHTML = subnav("teams",[["rank","Rankings"],["compare","Compare"]]) + (sub==="compare" ? vCompare() : vRank());
+  else if(S.tab==="matches") m.innerHTML = subnav("matches",[["schedule","Schedule"],["brief","Pre-match"],["scouts","Scouts"]]) + (sub==="brief" ? vBrief() : sub==="scouts" ? vScouts() : vSchedule());
+  else if(S.tab==="pick") m.innerHTML = vPick();
+  else m.innerHTML = subnav("more",[["check","Data check"],["transfer","QR transfer"],["setup","Setup"]]) + (sub==="check" ? vCheck() : sub==="transfer" ? vTransfer() : vSetup());
+  if(S.tab==="more" && sub==="transfer") renderQR();
+  renderTeam();
+}
+const isTyping = root => { const a=document.activeElement; return !!(a && root && root.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type!=="file"); };
+function renderSoft(){
+  S.ver++; setSync();
+  if(S.tab==="scout"){ const box=$("#assignBox"); if(box) box.innerHTML=assignCard(); }
+  else if(isTyping($("#main"))) S.dirty = true;
+  else { const y=scrollY; render(); scrollTo(0,y); return; }
+  if(isTyping($("#overlayRoot"))) S.panelDirty = true; else renderTeam();
+}
+document.addEventListener("focusout", () => setTimeout(() => {
+  if(S.dirty && !isTyping($("#main"))){ const y=scrollY; render(); scrollTo(0,y); }
+  if(S.panelDirty && !isTyping($("#overlayRoot"))){ S.panelDirty=false; renderTeam(); }
+}, 0));
+
+function setSync(){
+  const c=$("#syncChip"), t=$("#syncTxt"); const q=S.queue.length; let cls="ok", txt;
+  if(S.connecting){ cls=""; txt="Connecting…"; }
+  else if(S.backend==="local" && HAS_FB && S.wkey){ cls="warn"; txt = q ? `Not connected · ${q} waiting` : "Not connected"; }
+  else if(S.backend==="local"){ cls="warn"; txt = "This device only"; }
+  else if(S.backend==="firebase"){
+    if(!navigator.onLine){ cls="warn"; txt="Offline · saving on device"; }
+    else if(S.pending||q){ cls="warn"; txt=`Syncing ${S.pending+q}…`; }
+    else txt="Live · synced";
+  } else {
+    if(!S.live){ cls="warn"; txt = q ? `Offline · ${q} waiting` : "Offline"; }
+    else if(q){ cls="warn"; txt=`${q} waiting to sync`; }
+    else txt = S.readOnly ? "Live · view only" : "Live · synced";
+  }
+  c.className = "chip "+cls; t.textContent = txt;
+  $("#evtName").textContent = S.showAll ? "All" : S.event;
+}
+function subnav(tab, items){ return `<div class="subnav" role="group" aria-label="View">${items.map(([k,l])=>`<button type="button" data-sub="${tab}" data-v="${k}" ${pressed(S.sub[tab]===k)}>${esc(l)}</button>`).join("")}</div>`; }
+function seg(key, opts, cls=""){ return `<div class="seg ${cls}">${opts.map(([v,l])=>`<button type="button" data-pick="${key}" data-v="${v}" ${pressed(String(S.form[key])===String(v))}>${esc(l)}</button>`).join("")}</div>`; }
+function tog(key, label, bad){ return `<button type="button" class="tog${bad?" badtog":""}" data-tog="${key}" ${pressed(S.form[key])}>${esc(label)}</button>`; }
+function counter(key, label, opts={}){
+  const steps = opts.steps || [1,5,10];
+  return `<div class="counter ${opts.cls||""}"><div class="ch"><span>${esc(label)}</span><b class="val" id="v-${key}">${num(S.form[key])}</b></div>
+  <div class="btns" style="grid-template-columns:auto repeat(${steps.length},1fr)"><button type="button" class="minus" data-count="${key}" data-d="-1" aria-label="${esc(label)} minus one">−1</button>${steps.map(s=>`<button type="button" data-count="${key}" data-d="${s}">+${s}</button>`).join("")}</div>${opts.hint?`<div class="legend">${esc(opts.hint)}</div>`:""}</div>`;
+}
+function rating(key, label){
+  return `<div class="rate"><span class="lbl">${esc(label)}</span><div class="seg">${[0,1,2,3,4,5].map(v=>`<button type="button" data-pick="${key}" data-v="${v}" ${pressed(num(S.form[key])===v)}>${v===0?"N/A":v}</button>`).join("")}</div></div>`;
+}
+const joinBanner = () => (SITE && HAS_FB && !S.wkey) ? `<div class="banner">Not connected to your team yet. Reports stay on this phone until you join.<button class="btn sm" data-goto="more" data-v="setup">Join team</button></div>` : "";
+const rosterList = () => `<datalist id="rosterNames">${(rosterFor().scouts||[]).map(s=>`<option value="${esc(s)}">`).join("")}</datalist>`;
+
+function assignCard(){
+  const name = S.form.scoutName; const a = nextAssignment(name);
+  if(!a) return "";
+  const t = a.team, nm = teamName(t);
+  return `<div class="assign"><div><div class="legend" style="color:inherit">Next for ${esc(name)}</div><div class="big">Q${a.m.n} · ${POS_LBL[a.p]} · <span class="mono">${esc(t)}</span></div>${nm?`<div class="legend" style="color:inherit">${esc(nm)}</div>`:""}</div>
+  <button class="btn" data-act="fillAssign" data-m="${a.m.n}" data-p="${a.p}">Fill in form</button></div>`;
+}
+
+function vScout(){
+  const F=S.form;
+  return `<div class="view">
+  ${joinBanner()}
+  ${S.readOnly?`<div class="banner">You can view data but not save it. Ask the app owner to give you Contributor access.</div>`:""}
+  <div id="assignBox">${assignCard()}</div>
+  <div id="timerBox">${S.timer ? timerHTML() : timerIdle()}</div>
+  <section class="sec" id="s-setup">
+    <div class="sec-h"><h2>Match setup</h2><span class="tag">Event ${esc(S.event)}</span></div>
+    <div class="grid3">
+      <label class="f">Your name<input type="text" id="f-scoutName" data-f="scoutName" list="rosterNames" value="${esc(F.scoutName)}" autocomplete="nickname" placeholder="e.g. Maya"></label>
+      <label class="f">Match #<input type="number" id="f-match" data-f="match" inputmode="numeric" value="${esc(F.match)}" placeholder="12"></label>
+      <label class="f">Team #<input type="number" id="f-team" data-f="team" inputmode="numeric" value="${esc(F.team)}" placeholder="254"></label>
+    </div>${rosterList()}
+    <div class="grid2">
+      <div class="stack"><span class="lbl">Alliance</span>${seg("alliance",[["red","Red"],["blue","Blue"]],"red")}</div>
+      <div class="stack"><span class="lbl">Driver station</span>${seg("station",[["1","1"],["2","2"],["3","3"]])}</div>
+    </div>
+    ${tog("noShow","Robot did not show up", true)}
+  </section>
+  <section class="sec" id="s-auto">
+    <div class="sec-h"><h2>Auto</h2><span class="tag">0:00 – 0:20</span></div>
+    <div class="grid2">${counter("autoFuel","Fuel scored in hub")}${counter("autoMiss","Fuel missed",{cls:"missc",steps:[1,5]})}</div>
+    <div class="grid2">${tog("autoLeave","Left starting zone")}${tog("autoClimb","Climbed Level 1 in auto")}</div>
+  </section>
+  <section class="sec" id="s-tele">
+    <div class="sec-h"><h2>Teleop</h2><span class="tag">0:20 – 2:40</span></div>
+    <div class="grid2">${counter("teleFuel","Fuel scored in active hub")}${counter("teleMiss","Fuel missed",{cls:"missc",steps:[1,5]})}</div>
+    ${counter("volleys","Shooting volleys",{steps:[1],hint:"Tap once every time they stop and shoot. The app works out fuel per volley."})}
+    <div class="stack"><span class="lbl">Shooter flow</span>${seg("flow",FLOW)}</div>
+    <div class="stack"><span class="lbl">Aiming</span>${seg("aim",AIM)}</div>
+    <div class="stack"><span class="lbl">Drivetrain</span>${seg("drive",DRIVE)}</div>
+    <div class="grid3">${tog("defense","Played defense")}${tog("bump","Drove over the bump")}${tog("trench","Drove under the trench")}</div>
+  </section>
+  <section class="sec" id="s-end">
+    <div class="sec-h"><h2>End game</h2><span class="tag">Tower climb</span></div>
+    ${seg("climb",CLIMB)}
+  </section>
+  <section class="sec" id="s-rate">
+    <div class="sec-h"><h2>Ratings</h2><span class="tag">1 poor · 5 elite · N/A not seen</span></div>
+    ${RATINGS.map(([k,l])=>rating(k,l)).join("")}
+  </section>
+  <section class="sec" id="s-prob">
+    <div class="sec-h"><h2>Problems</h2><span class="tag">Reliability</span></div>
+    <div class="grid2">${tog("m_died","Died / lost power or comms",true)}${tog("m_stuck","Got stuck (bump, fuel, robot)",true)}${tog("m_tipped","Tipped over",true)}${tog("m_broke","Something broke during match",true)}</div>
+    <div class="stack"><span class="lbl">Missing or not working</span>
+      <div class="seg">${MECHS.map(([v,l])=>`<button type="button" data-mech="${v}" ${pressed(F.broken.includes(v))}>${esc(l)}</button>`).join("")}</div></div>
+    <div class="grid2">
+      ${counter("fouls","Fouls caused",{steps:[1],cls:"missc"})}
+      <div class="stack"><span class="lbl">Card</span>${seg("card",[["none","None"],["yellow","Yellow"],["red","Red"]])}</div>
+    </div>
+  </section>
+  <section class="sec">
+    <div class="sec-h"><h2>Notes</h2><span class="tag">Weaknesses · strategy</span></div>
+    <textarea id="f-notes" data-f="notes" placeholder="Slow to line up shots from the far side. Gets pushed easily. Great human-player feeding from the outpost.">${esc(F.notes)}</textarea>
+    <div class="row"><button class="btn primary" data-act="submit" style="flex:1">Submit match</button><button class="btn" data-act="clear">Clear form</button></div>
+  </section>
+  </div>`;
+}
+
+function timerIdle(){ return `<div class="timer"><div><div class="ph">Match timer</div><div style="font-size:13px;opacity:.75">Start it when the match starts. It tracks auto, the hub shifts and end game, and keeps your screen awake.</div></div><button class="btn" data-act="timer">Start</button></div>`; }
+function timerHTML(){
+  const t = Math.min(160, (Date.now()-S.timer.start)/1000);
+  const ph = PHASES.find(p=>t>=p[0]&&t<p[1]) || PHASES[PHASES.length-1];
+  const left = Math.max(0, Math.ceil(160-t)); const mm=Math.floor(left/60), ss=String(left%60).padStart(2,"0");
+  const inPh = Math.max(0, Math.ceil(ph[1]-t));
+  return `<div class="timer"><span class="t">${mm}:${ss}</span><div><div class="ph">${t>=160?"Match over":esc(ph[2])}</div><div style="font-size:13px;opacity:.75">${t>=160?"Finish the form and submit":inPh+"s left in phase"}</div></div><button class="btn" data-act="timerStop">${t>=160?"Close":"Stop"}</button><div class="bar"><i style="width:${t/160*100}%"></i></div></div>`;
+}
+let lastPhase=null;
+function tick(){
+  if(!S.timer) return;
+  const box=$("#timerBox"); if(box) box.innerHTML=timerHTML();
+  const t=(Date.now()-S.timer.start)/1000;
+  const ph=(PHASES.find(p=>t>=p[0]&&t<p[1])||[])[2];
+  if(ph!==lastPhase && S.tab==="scout"){
+    if(ph==="Transition") $("#s-tele")?.scrollIntoView({behavior:"smooth",block:"start"});
+    if(ph==="End game") $("#s-end")?.scrollIntoView({behavior:"smooth",block:"center"});
+    lastPhase=ph;
+  }
+  if(t>=160){ clearInterval(S.timer.id); S.timer.id=null; releaseWake(); }
+}
+async function startTimer(){
+  S.timer={start:Date.now()}; lastPhase="Auto"; S.timer.id=setInterval(tick,250); tick();
+  try{ S.wake = await navigator.wakeLock?.request("screen"); }catch{}
+  $("#s-auto")?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function releaseWake(){ try{ S.wake?.release(); }catch{} S.wake=null; }
+
+function vRank(){
+  const rows = rankAll();
+  const q = S.filter.trim();
+  let shown = q ? rows.filter(r=>r.team.includes(q) || teamName(r.team).toLowerCase().includes(q.toLowerCase())) : rows.slice();
+  const k=S.sort.key, d=S.sort.dir;
+  const val = r => k==="team"?num(r.team) : k==="climb"?r.climbRate : r[k];
+  if(k!=="score") shown.sort((a,b)=>((val(a)??-1e9)-(val(b)??-1e9))*d);
+  else if(d===1) shown.reverse();
+  const n = entriesNow().length;
+  if(!rows.length) return `<div class="view"><section class="sec"><div class="empty"><h3>No teams scouted yet</h3><p>Rankings fill in as soon as anyone on your team submits a match from the Scout tab. Everyone sees the same list.</p><button class="btn primary" data-goto="scout" data-v="match">Scout a match</button></div></section></div>`;
+  const th=(key,label,cls="")=>`<th class="${cls}" data-sort="${key}" ${S.sort.key===key?`aria-sort="${d<0?"descending":"ascending"}"`:""}>${label}${S.sort.key===key?(d<0?" ↓":" ↑"):""}</th>`;
+  const C=cfg(), our=String(C.ourTeam||"");
+  return `<div class="view">
+  <div class="sec-h"><h2 class="page-h">Team rankings</h2><span class="tag">${rows.length} teams · ${n} match reports</span></div>
+  <input type="search" id="f-filter" placeholder="Find a team number or name" value="${esc(S.filter)}">
+  <div class="tw"><table>
+    <thead><tr>${th("rank","#","l")}${th("team","Team","l")}${th("score","Score")}${th("pts","Avg pts")}${th("auto","Auto")}${th("fuel","Fuel")}${th("perVolley","Fuel/volley")}${th("acc","Acc")}${th("climb","Climb")}${th("rating","Rating")}${th("issues","Issues")}<th class="l">Shooter</th>${th("n","Reports")}</tr></thead>
+    <tbody>${shown.map(r=>{
+      const nm=teamName(r.team);
+      const iss = r.issues==null?"":r.issues>=.34?"bad":r.issues>0?"warn":"good";
+      return `<tr class="click${r.team===our?" ours":""}" data-open="${esc(r.team)}"><td class="rk">${r.rank??"–"}</td>
+      <td class="l"><span class="team-n">${esc(r.team)}</span>${nm?` <span class="muted">${esc(nm)}</span>`:""}</td>
+      <td><span class="score"><span class="mono">${f1(r.score)}</span><span class="sb"><i style="width:${r.score||0}%"></i></span></span></td>
+      <td class="num">${f1(r.pts)}</td><td class="num">${f1(r.auto)}</td><td class="num">${f1(r.fuel)}</td><td class="num">${f1(r.perVolley)}</td><td class="num">${pct(r.acc)}</td>
+      <td>${r.bestClimb!=="none"?`<span class="pill acc">${esc(LBL[r.bestClimb])}</span>`:""} <span class="mono">${pct(r.climbRate)}</span></td>
+      <td class="num">${f1(r.rating)}</td><td><span class="pill ${iss}">${pct(r.issues)}</span></td>
+      <td class="l">${[r.aim&&LBL[r.aim],r.flow&&LBL[r.flow]].filter(Boolean).map(esc).join(" · ")||"<span class='muted'>—</span>"}</td>
+      <td class="num">${r.n}</td></tr>`;}).join("")}</tbody></table></div>
+  <p class="legend">Score (0–100) = ${C.wPts}% match points compared with the best team here + ${C.wRate}% scout ratings + ${C.wRel}% reliability. Points use ${C.fuelTele} per fuel, ${C.autoClimb} for an auto climb, ${C.L1}/${C.L2}/${C.L3} for tower levels. Change these in More → Setup. Tap a team for its profile, trend and notes.</p>
+  </div>`;
+}
+
+// ---------- charts ----------
+function niceStep(v){ const p=10**Math.floor(Math.log10(Math.max(v,1e-9))); for(const m of [1,2,5,10]) if(m*p>=v) return m*p; return 10*p; }
+function lineChart(series, opts={}){
+  const all = series.flatMap(s=>s.points);
+  if(!all.length) return `<p class="muted">No matches to chart yet.</p>`;
+  // size the drawing to the screen so axis text stays readable on phones
+  const W=Math.round(Math.min(640, Math.max(300, innerWidth-80))), H=Math.round(W*0.42)+40, L=40, R=opts.direct?44:16, T=12, B=30;
+  const xs = [...new Set(all.map(p=>p.x))].sort((a,b)=>a-b), xi = new Map(xs.map((x,i)=>[x,i])), n = xs.length;
+  const X = x => n===1 ? L+(W-L-R)/2 : L + xi.get(x)*(W-L-R)/(n-1);
+  const step = niceStep(Math.max(10, ...all.map(p=>p.y))/4), ymax = Math.max(step, Math.ceil(Math.max(10, ...all.map(p=>p.y))/step)*step);
+  const Y = y => T + (H-T-B)*(1-y/ymax);
+  let g = "";
+  for(let v=0; v<=ymax+1e-9; v+=step) g += `<line class="gl" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${L-6}" y="${Y(v)+4}" text-anchor="end">${Math.round(v)}</text>`;
+  const every = Math.ceil(n/Math.max(3, Math.floor((W-L-R)/48)));
+  xs.forEach((x,i) => { if(i%every===0 || i===n-1) g += `<text class="ax" x="${X(x)}" y="${H-10}" text-anchor="middle">Q${x}</text>`; });
+  if(opts.avg!=null){ const ay=Y(opts.avg); g += `<line class="avg" x1="${L}" x2="${W-R}" y1="${ay}" y2="${ay}"/><text class="ax" x="${W-R}" y="${ay-5}" text-anchor="end">avg ${f1(opts.avg)}</text>`; }
+  series.forEach(s => {
+    const pts = s.points.slice().sort((a,b)=>a.x-b.x);
+    if(pts.length>1) g += `<path d="${pts.map((p,i)=>`${i?"L":"M"}${X(p.x).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(" ")}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    pts.forEach(p => { g += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`; });
+    if(opts.direct && pts.length){ const p=pts[pts.length-1]; g += `<text class="dl" x="${X(p.x)+8}" y="${Y(p.y)+4}">${esc(s.label)}</text>`; }
+  });
+  series.forEach(s => s.points.forEach(p => { g += `<circle class="hit" cx="${X(p.x)}" cy="${Y(p.y)}" r="12" data-tip="${esc((series.length>1?s.label+" · ":"")+p.tip)}"/>`; }));
+  const keys = series.length>1 ? `<div class="keys">${series.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join("")}</div>` : "";
+  return `<div class="chart">${keys}<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label||"Chart")}">${g}</svg></div>`;
+}
+const seriesPts = r => r.series.map(p => ({x:p.x, y:p.y, tip:`Q${p.x}: ${f1(p.y)} pts · ${f1(p.fuel)} fuel · ${LBL[p.climb]||"no climb"}`}));
+
+function vCompare(){
+  const slots = S.compare, ts = slots.filter(Boolean), rows = rankAll();
+  const quick = rows.filter(r=>!ts.includes(r.team)).slice(0,10);
+  const add = `<section class="sec"><div class="sec-h"><h2>Compare teams</h2><span class="tag">Up to 4</span></div>
+    <div class="row"><input type="number" id="cmp-in" data-keep="cmp" inputmode="numeric" placeholder="Team #" value="${esc(draft("cmp",""))}" style="flex:1;min-width:120px"><button class="btn" data-act="cmpAdd" ${ts.length>=4?"disabled":""}>Add</button></div>
+    ${ts.length?`<div class="row">${slots.map((t,i)=>t?`<span class="pill"><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--s${i+1});margin-right:6px"></i>${esc(t)} <button class="btn sm" data-act="cmpRm" data-i="${i}" aria-label="Remove ${esc(t)}" style="padding:0 6px;border:0;background:none">✕</button></span>`:"").join("")}</div>`:""}
+    ${quick.length && ts.length<4?`<div class="row"><span class="lbl">Top teams:</span>${quick.map(r=>`<button class="btn sm" data-act="cmpQuick" data-t="${esc(r.team)}"><span class="mono">${esc(r.team)}</span></button>`).join("")}</div>`:""}
+  </section>`;
+  if(!ts.length) return `<div class="view">${add}<section class="sec"><div class="empty"><h3>Pick teams to compare</h3><p>Add two to four teams to see their stats side by side, with the best value in each row highlighted and their scoring trends on one chart.</p></div></section></div>`;
+  const st = slots.map(t => t ? statsFor(t) : null);
+  const M = [
+    ["Rank", r=>r.rank, -1, v=>v??"—"], ["Score", r=>r.score, 1, f1], ["Avg points", r=>r.pts, 1, f1], ["Auto points", r=>r.auto, 1, f1],
+    ["Fuel / match", r=>r.fuel, 1, f1], ["Fuel / volley", r=>r.perVolley, 1, f1], ["Accuracy", r=>r.acc, 1, pct], ["Tower points", r=>r.tower, 1, f1],
+    ["Climb rate", r=>r.climbRate, 1, pct], ["Best climb", r=>({none:0,L1:1,L2:2,L3:3}[r.bestClimb]||0), 1, v=>["—","Level 1","Level 2","Level 3"][v]],
+    ...RATINGS.map(([k,l]) => [l, r=>r.ratings[k], 1, f1]), ["Issue rate", r=>r.issues, -1, pct], ["Reports", r=>r.n, 0, v=>v]
+  ];
+  const head = `<tr><th class="l">Stat</th>${slots.map((t,i)=>t?`<th><span class="team-n" style="color:var(--fg)">${esc(t)}</span><br><span class="legend" style="text-transform:none;letter-spacing:0">${esc(teamName(t))}</span></th>`:"").join("")}</tr>`;
+  const body = M.map(([lab, fn, dir, fmt]) => {
+    const vals = st.map(r => r ? fn(r) : null), live = vals.filter(v=>v!=null);
+    const best = dir===0 || live.length<2 ? null : dir>0 ? Math.max(...live) : Math.min(...live);
+    return `<tr><td class="l">${esc(lab)}</td>${st.map((r,i)=> r ? `<td class="num${best!=null&&vals[i]===best?" best":""}">${esc(fmt(vals[i]))}</td>` : "").join("")}</tr>`;
+  }).join("") + `<tr><td class="l">Drive · aim · flow</td>${st.map(r=>r?`<td>${esc([LBL[r.drive],LBL[r.aim],LBL[r.flow]].filter(Boolean).join(" · ")||"—")}</td>`:"").join("")}</tr>`;
+  const chart = lineChart(slots.map((t,i)=>t?{label:t, color:`var(--s${i+1})`, points:seriesPts(st[i])}:null).filter(Boolean), {direct:true, label:"Points per match for compared teams"});
+  return `<div class="view">${add}
+  <section class="sec"><div class="sec-h"><h2>Points per match</h2><span class="tag">Scouted, by match number</span></div>${chart}</section>
+  <div class="tw"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>
+  <p class="legend">Green marks the best value in each row. Tap a team in Rankings for its full profile.</p></div>`;
+}
+
+// ---------- matches ----------
+function vSchedule(){
+  const sch = scheduleFor(), C = cfg(), our = String(C.ourTeam||"");
+  const es = entriesNow(); const have = new Map(); es.forEach(e => { const k=num(e.match)+"|"+e.team; have.set(k,(have.get(k)||0)+1); });
+  const importer = `<section class="sec"><div class="sec-h"><h2>Match schedule</h2><span class="tag">Event ${esc(S.event)}</span></div>
+    ${SITE ? `<p class="legend">Pull the qualification schedule and team names from The Blue Alliance. Your event code (More → Setup) must be the TBA event key, like <code>2026miket</code>.${C.tbaKey?"":" Add a TBA read key in More → Setup first."}</p>
+      <div class="row"><button class="btn primary" data-act="tba" ${C.tbaKey?"":"disabled"}>${sch&&sch.source==="tba"?"Refresh from TBA":"Import from TBA"}</button>${sch?`<span class="legend">${sch.matches.length} matches${sch.ts?` · updated ${new Date(sch.ts).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`:""}</span>`:""}</div>`
+      : `<p class="legend">Paste the qualification schedule below. The website version can also import it from The Blue Alliance.</p>`}
+    <details ${!sch&&!SITE?"open":""}><summary>Paste a schedule by hand</summary>
+      <div class="stack" style="margin-top:8px"><p class="legend">One match per line: match number, then Red 1–3, then Blue 1–3. Example: <code>1, 254, 1678, 118, 971, 2056, 1323</code></p>
+      <textarea id="sch-paste" data-keep="schPaste" placeholder="1, 254, 1678, 118, 971, 2056, 1323&#10;2, 4414, 6328, 3476, 2910, 195, 1690">${esc(draft("schPaste",""))}</textarea>
+      <button class="btn" data-act="schPaste" style="justify-self:start">Save schedule</button></div></details>
+  </section>`;
+  if(!sch || !sch.matches.length) return `<div class="view">${importer}<section class="sec"><div class="empty"><h3>No schedule yet</h3><p>With a schedule you get automatic scout assignments, pre-match briefs, and checks for robots nobody scouted.</p></div></section></div>`;
+  const tcell = (t, cls) => `<span class="team-n ${cls}" style="${t===our?"text-decoration:underline":""}">${esc(t)}</span>`;
+  return `<div class="view">${importer}
+  <div class="tw"><table><thead><tr><th class="l">Match</th><th class="l">Red</th><th class="l">Blue</th><th>Score</th><th>Scouted</th></tr></thead><tbody>
+  ${[...sch.matches].sort((a,b)=>a.n-b.n).map(m => {
+    const cov = POS.filter(p => have.get(m.n+"|"+teamAt(m,p))).length; const ours = [...m.red,...m.blue].map(String).includes(our);
+    return `<tr class="click${ours?" ours":""}" data-brief="${m.n}"><td class="l"><span class="mono">Q${m.n}</span></td><td class="l">${m.red.map(t=>tcell(String(t),"tn-red")).join(" ")}</td><td class="l">${m.blue.map(t=>tcell(String(t),"tn-blue")).join(" ")}</td>
+    <td class="num">${played(m)?`<span class="tn-red">${m.rs}</span>–<span class="tn-blue">${m.bs}</span>`:"—"}</td>
+    <td><span class="pill ${cov===6?"good":cov?"warn":""}">${cov}/6</span></td></tr>`; }).join("")}
+  </tbody></table></div>
+  <p class="legend">Tap a match for its pre-match brief. Highlighted rows include your team${our?` (${esc(our)})`:""}; set your team number in More → Setup.</p></div>`;
+}
+
+function vBrief(){
+  const sch = scheduleFor(), C = cfg(), our = String(C.ourTeam||"");
+  const ms = sch ? [...sch.matches].sort((a,b)=>a.n-b.n) : [];
+  if(S.brief==null && ms.length){
+    const pick = ms.find(m=>!played(m) && our && [...m.red,...m.blue].map(String).includes(our)) || ms.find(m=>!played(m)) || ms[0];
+    S.brief = pick.n;
+  }
+  const custom = S.brief==="custom" || !ms.length;
+  const m = custom ? null : ms.find(x=>x.n===S.brief);
+  const red = custom ? S.briefTeams.red.filter(Boolean) : m ? m.red.map(String) : [];
+  const blue = custom ? S.briefTeams.blue.filter(Boolean) : m ? m.blue.map(String) : [];
+  const sel = `<section class="sec"><div class="sec-h"><h2>Pre-match brief</h2><span class="tag">Predicted from scouting</span></div>
+    ${ms.length?`<label class="f">Match<select id="b-match">${ms.map(x=>`<option value="${x.n}" ${S.brief===x.n?"selected":""}>Q${x.n}${our&&[...x.red,...x.blue].map(String).includes(our)?" ★ our match":""}${played(x)?" (played)":""}</option>`).join("")}<option value="custom" ${custom?"selected":""}>Custom teams…</option></select></label>`:`<p class="legend">No schedule yet, so type the teams in. Import a schedule in Matches → Schedule to pick matches from a list.</p>`}
+    ${custom?`<div class="grid2">${["red","blue"].map(al=>`<div class="stack"><span class="lbl">${al==="red"?"Red":"Blue"} alliance</span><div class="row">${[0,1,2].map(i=>`<input type="number" inputmode="numeric" id="bt-${al}-${i}" data-bt="${al}-${i}" value="${esc(S.briefTeams[al][i])}" placeholder="Team" style="flex:1;min-width:70px">`).join("")}</div></div>`).join("")}</div><button class="btn" data-act="briefGo" style="justify-self:start">Show brief</button>`:""}
+  </section>`;
+  if(!red.length && !blue.length) return `<div class="view">${sel}</div>`;
+  const side = (teams, al) => {
+    const st = teams.map(t => statsFor(t));
+    const pts = sum(st.map(r=>r.pts)), fuel = sum(st.map(r=>r.fuel)), tower = sum(st.map(r=>r.tower)), unknown = st.filter(r=>!r.n).length;
+    const rp = (ok, label) => `<span class="pill ${ok?"good":"bad"}">${ok?"✓":"✗"} ${esc(label)}</span>`;
+    return {pts, html:`<div class="acol"><div class="ahead ${al}"><h3>${al==="red"?"Red":"Blue"} alliance</h3><div><span class="pts">${f1(pts)}</span> <span class="legend">predicted points</span></div>
+      <div class="row">${rp(fuel>=C.rpFuel1, `${f1(fuel)}/${C.rpFuel1} fuel RP`)}${rp(fuel>=C.rpFuel2, `${f1(fuel)}/${C.rpFuel2} fuel RP`)}${rp(tower>=C.rpTower, `${f1(tower)}/${C.rpTower} tower RP`)}</div>
+      ${unknown?`<p class="legend">${unknown} team${unknown>1?"s have":" has"} no scouting data yet.</p>`:""}</div>
+      ${st.map(r => teamCard(r, our)).join("")}</div>`};
+  };
+  const R = side(red,"red"), Bl = side(blue,"blue"), diff = R.pts - Bl.pts;
+  const verdict = Math.abs(diff) < 10 ? "Too close to call" : `${diff>0?"Red":"Blue"} favored by ${f1(Math.abs(diff))} points`;
+  return `<div class="view">${sel}
+    <div class="sec-h"><h2 class="page-h">${m?`Q${m.n}`:"Custom match"} · ${esc(verdict)}</h2>${m&&played(m)?`<span class="tag">Final ${m.rs}–${m.bs}</span>`:""}</div>
+    <div class="alli">${R.html}${Bl.html}</div>
+    <p class="legend">Predictions add each team's average scouted points, fuel and tower points. Ranking-point targets (${C.rpFuel1} and ${C.rpFuel2} fuel, ${C.rpTower} tower points) can be changed in More → Setup.</p></div>`;
+}
+function teamCard(r, our){
+  const t = r.team, pit = teamsNow().get(t) || {};
+  const notes = notesNow().filter(n=>String(n.team)===t).sort((a,b)=>(a.tag==="weakness"?0:1)-(b.tag==="weakness"?0:1) || b.ts-a.ts).slice(0,2);
+  const mal = r.mal || {}; const probs = [mal.noShow&&`${mal.noShow} no-show`, mal.died&&`died ${mal.died}×`, mal.stuck&&`stuck ${mal.stuck}×`, mal.tipped&&`tipped ${mal.tipped}×`, mal.broke&&`broke ${mal.broke}×`, ...Object.entries(r.brokenMechs||{}).map(([k,c])=>`${LBL[k]} out ${c}×`)].filter(Boolean);
+  return `<div class="tcard${t===our?" ours":""}" data-open="${esc(t)}">
+    <div class="tt"><span class="team-n" style="font-size:20px">${esc(t)}</span><span class="muted">${esc(teamName(t))}</span>${r.rank?`<span class="pill acc" style="margin-left:auto">#${r.rank} · ${f1(r.score)}</span>`:""}</div>
+    ${r.n?`<div class="kv"><span>Pts <b>${f1(r.pts)}</b></span><span>Auto <b>${f1(r.auto)}</b></span><span>Fuel <b>${f1(r.fuel)}</b></span><span>Acc <b>${pct(r.acc)}</b></span><span>Climb <b>${r.bestClimb!=="none"?LBL[r.bestClimb]:"—"}</b> (${pct(r.climbRate)})</span></div>`:`<p class="legend">No match reports yet.</p>`}
+    <div class="row">${[LBL[pit.drive||r.drive], LBL[pit.aim||r.aim], LBL[pit.flow||r.flow]].filter(Boolean).map(x=>`<span class="pill">${esc(x)}</span>`).join("")}${probs.length?probs.map(p=>`<span class="pill bad">${esc(p)}</span>`).join(""):r.n?`<span class="pill good">No problems seen</span>`:""}</div>
+    ${notes.map(n=>`<div class="wk">${esc(n.text.length>140?n.text.slice(0,140)+"…":n.text)}</div>`).join("")}
+    ${!notes.length && pit.weaknesses?`<div class="wk">${esc(pit.weaknesses.slice(0,140))}</div>`:""}
+  </div>`;
+}
+
+function vScouts(){
+  const ro = rosterFor(), sch = scheduleFor(), A = assignments();
+  const me = S.form.scoutName, only = S.onlyMe && me;
+  const editor = `<section class="sec"><div class="sec-h"><h2>Scout roster</h2><span class="tag">Event ${esc(S.event)}</span></div>
+    <label class="f">Scouts, one name per line<textarea id="ro-names" data-keep="roNames" placeholder="Maya&#10;Jordan&#10;Priya&#10;Sam&#10;Alex&#10;Chris&#10;Taylor">${esc(draft("roNames",(ro.scouts||[]).join("\n")))}</textarea></label>
+    <div class="grid2"><label class="f">Matches per shift before rotating<input type="number" id="ro-shift" data-keep="roShift" inputmode="numeric" min="1" value="${esc(draft("roShift",ro.shift||6))}"></label>
+    <div class="stack" style="align-content:end"><button class="btn" data-act="roSave">Save roster</button></div></div>
+    <p class="legend">Six scouts watch each match, one per robot. With more than six, scouts rotate in and out every shift so everyone gets breaks. Each scout's next robot appears at the top of their Scout tab when their name matches the roster.</p>
+  </section>`;
+  if(!sch) return `<div class="view">${editor}<section class="sec"><div class="empty"><h3>Add a schedule to make assignments</h3><p>Import or paste the match schedule in Matches → Schedule. Assignments are worked out from it automatically.</p></div></section></div>`;
+  if(!A.size) return `<div class="view">${editor}</div>`;
+  const ms = [...sch.matches].sort((a,b)=>a.n-b.n).filter(m => !only || POS.some(p=>norm((A.get(m.n)||{})[p])===norm(me)));
+  return `<div class="view">${editor}
+    <div class="row"><span class="lbl">${me?`You are ${esc(me)}`:"Set your name on the Scout tab to see your matches"}</span>${me?`<button type="button" class="tog" data-act="onlyMe" ${pressed(S.onlyMe)}>Only my matches</button>`:""}</div>
+    <div class="tw"><table><thead><tr><th class="l">Match</th>${POS.map(p=>`<th class="l">${POS_LBL[p]}</th>`).join("")}</tr></thead><tbody>
+    ${ms.map(m => { const a = A.get(m.n)||{}; return `<tr><td class="l"><span class="mono">Q${m.n}</span></td>${POS.map(p => { const s=a[p], t=teamAt(m,p), mine=s&&norm(s)===norm(me);
+      return `<td class="l" style="${mine?"background:var(--accent-soft);font-weight:700":""}"><span class="team-n ${p[0]==="R"?"tn-red":"tn-blue"}">${esc(t)}</span> <span class="${s?"":"muted"}">${esc(s||"—")}</span></td>`; }).join("")}</tr>`; }).join("")}
+    </tbody></table></div></div>`;
+}
+
+// ---------- pit ----------
+function blankPit(){ return {num:"",name:"",drive:"",aim:"",flow:"",capacity:"",trench:"",bump:"",climbMax:"",auto:"",strategy:"",weaknesses:""}; }
+function vPit(){
+  const p = S.pit || (S.pit = blankPit());
+  const ps=(key,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button type="button" data-pit="${key}" data-v="${v}" ${pressed(p[key]===v)}>${esc(l)}</button>`).join("")}</div>`;
+  const yn=[["yes","Yes"],["no","No"],["?","Unsure"]];
+  return `<div class="view">${joinBanner()}
+  <section class="sec">
+    <div class="sec-h"><h2>Pit scouting</h2><span class="tag">One profile per team, shared</span></div>
+    <div class="grid2">
+      <label class="f">Team #<input type="number" id="p-num" data-p="num" inputmode="numeric" value="${esc(p.num)}" placeholder="1678"></label>
+      <label class="f">Team name<input type="text" id="p-name" data-p="name" value="${esc(p.name)}" placeholder="Citrus Circuits"></label>
+    </div>
+    <p class="legend">Typing a team number that already has a profile loads it, so you can update it.</p>
+    <div class="stack"><span class="lbl">Drivetrain</span>${ps("drive",DRIVE)}</div>
+    <div class="stack"><span class="lbl">Shooter aiming</span>${ps("aim",AIM)}</div>
+    <div class="stack"><span class="lbl">Shooter flow</span>${ps("flow",FLOW)}</div>
+    <div class="grid2">
+      <label class="f">Fuel it can hold<input type="number" id="p-capacity" data-p="capacity" inputmode="numeric" value="${esc(p.capacity)}" placeholder="40"></label>
+      <div class="stack"><span class="lbl">Highest climb</span>${ps("climbMax",[["none","None"],["L1","L1"],["L2","L2"],["L3","L3"]])}</div>
+    </div>
+    <div class="grid2">
+      <div class="stack"><span class="lbl">Fits under the trench</span>${ps("trench",yn)}</div>
+      <div class="stack"><span class="lbl">Can cross the bump</span>${ps("bump",yn)}</div>
+    </div>
+    <label class="f">Auto routines<textarea id="p-auto" data-p="auto" placeholder="Center start: shoots 8 preload, grabs from depot, climbs L1.">${esc(p.auto)}</textarea></label>
+    <label class="f">Strategy / what they want to do<textarea id="p-strategy" data-p="strategy" placeholder="Wants to be a full-field feeder. Prefers playing defense in shifts 3–4.">${esc(p.strategy)}</textarea></label>
+    <label class="f">Weaknesses they admitted or we saw<textarea id="p-weak" data-p="weaknesses" placeholder="Intake jams on bouncing fuel. Climber not tested yet.">${esc(p.weaknesses)}</textarea></label>
+    <div class="row"><button class="btn primary" data-act="pitSave" style="flex:1">Save team profile</button><button class="btn" data-act="pitClear">New team</button></div>
+  </section></div>`;
+}
+
+// ---------- picklist ----------
+function picklist(){ const p = coll("picklist").get(evKey()); return {order:[...((p&&p.order)||[])], dnp:[...((p&&p.dnp)||[])]}; }
+function vPick(){
+  const pl = picklist(), rows = rankAll(), byT = rankMap();
+  const avail = rows.filter(r=>!pl.order.includes(r.team));
+  return `<div class="view">
+  <div class="sec-h"><h2 class="page-h">Alliance picklist</h2><span class="tag">Event ${esc(S.event)} · shared</span></div>
+  <section class="sec">
+    ${pl.order.length?`<ol class="pl">${pl.order.map((t,i)=>{const r=byT[t]; const dnp=pl.dnp.includes(t); const nm=teamName(t);
+      return `<li class="${dnp?"dnp":""}"><span class="pos">${i+1}</span><div class="info"><button class="btn sm" data-open="${esc(t)}" style="border:0;background:none;padding:0"><span class="team-n">${esc(t)}</span></button> ${nm?`<span class="muted">${esc(nm)}</span>`:""}<div class="legend">${r?`Score ${f1(r.score)} · ${f1(r.pts)} pts · climb ${esc(r.bestClimb!=="none"?LBL[r.bestClimb]:"—")} · issues ${pct(r.issues)}`:"No match data yet"}</div></div>
+      <div class="row"><button class="btn sm" data-pl="up" data-t="${esc(t)}" aria-label="Move up" ${i===0?"disabled":""}>↑</button><button class="btn sm" data-pl="down" data-t="${esc(t)}" aria-label="Move down" ${i===pl.order.length-1?"disabled":""}>↓</button>
+      <button class="btn sm ${dnp?"":"danger"}" data-pl="dnp" data-t="${esc(t)}">${dnp?"Undo DNP":"DNP"}</button><button class="btn sm" data-pl="rm" data-t="${esc(t)}" aria-label="Remove">✕</button></div></li>`;}).join("")}</ol>`
+    :`<div class="empty"><h3>Picklist is empty</h3><p>Add teams below, best first. Move them up or down during alliance selection and mark teams as Do Not Pick. Everyone on your drive team sees the same order.</p></div>`}
+  </section>
+  <section class="sec">
+    <div class="sec-h"><h2>Add teams</h2><span class="tag">Sorted by score</span></div>
+    ${avail.length?`<div class="row">${avail.map(r=>`<button class="btn sm" data-pl="add" data-t="${esc(r.team)}"><span class="mono">${esc(r.team)}</span> <span class="muted">${f1(r.score)}</span></button>`).join("")}</div><button class="btn" data-pl="addAll" style="justify-self:start">Add all in ranking order</button>`:`<p class="muted">Every scouted team is already on the list.</p>`}
+  </section></div>`;
+}
+
+// ---------- data check ----------
+function vCheck(){
+  const Q = quality(), es = entriesNow();
+  if(!es.length) return `<div class="view"><section class="sec"><div class="empty"><h3>Nothing to check yet</h3><p>Once reports come in, this page flags robots nobody scouted, scouts who disagree about the same robot, and reports that look very different from a team's usual matches.</p></div></section></div>`;
+  const li = (open, main, sub) => `<li data-open="${esc(open)}"><b class="mono">${main}</b><span class="legend">${sub}</span></li>`;
+  const block = (title, tag, items, empty) => `<section class="sec"><div class="sec-h"><h2>${title}</h2><span class="pill ${items.length?"warn":"good"}">${items.length?`⚠ ${items.length}`:"✓ None"}</span></div>${tag?`<p class="legend">${tag}</p>`:""}${items.length?`<ul class="flags">${items.slice(0,60).join("")}</ul>${items.length>60?`<p class="legend">Showing 60 of ${items.length}.</p>`:""}`:`<p class="muted">${empty}</p>`}</section>`;
+  return `<div class="view">
+  ${block("Not scouted","Played matches with a robot that has no report.", Q.missing.map(x=>li(x.team, `Q${x.match} · ${POS_LBL[x.pos]} · ${esc(x.team)}`, x.scout?`assigned to ${esc(x.scout)}`:"no scout assigned")), scheduleFor()?"Every robot in played matches has a report.":"Add a schedule in Matches to check coverage.")}
+  ${block("Scouts disagree","Two or more reports on the same robot in the same match that don't match.", Q.disagree.map(x=>li(x.team, `Q${x.match} · ${esc(x.team)}`, `${esc(x.reasons.join("; "))} · ${esc(x.scouts.join(", "))}`)), "No conflicting reports.")}
+  ${block("Unusual reports","Points far from that team's other matches. Could be a great match, a breakdown, or a counting mistake.", Q.outliers.map(x=>li(x.e.team, `Q${num(x.e.match)} · ${esc(x.e.team)}`, `${f1(x.p)} pts vs usual ${f1(x.m)} · by ${esc(x.e.scoutName||"?")}`)), "Nothing stands out yet. Teams need at least 4 reports to compare.")}
+  ${scheduleFor()&&scheduleFor().matches.some(played)?block("Scouted vs official score","Alliance totals from scouting compared with the official score. Official scores include foul points, so small gaps are normal.", Q.official.map(x=>li((scheduleFor().matches.find(m=>m.n===x.match)||{})[x.al]?.[0]||"", `Q${x.match} · ${x.al==="red"?"Red":"Blue"}`, `scouted ${f1(x.sc)} vs official ${x.off}`)), "Scouted totals line up with official scores."):""}
+  <section class="sec"><div class="sec-h"><h2>Scouts</h2><span class="tag">${Q.scouts.length} people</span></div>
+    <div class="tw"><table><thead><tr><th class="l">Scout</th><th>Reports</th><th>Flags</th><th>Fuel off by</th></tr></thead><tbody>
+    ${Q.scouts.map(s=>`<tr><td class="l">${esc(s.name)}</td><td class="num">${s.n}</td><td>${s.flags?`<span class="pill warn">${s.flags}</span>`:`<span class="pill good">0</span>`}</td><td class="num">${s.dev==null?"—":f1(s.dev)}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="legend">"Fuel off by" is how far a scout's fuel counts are, on average, from other scouts' counts for the same teams. A high number can mean they need a refresher on counting.</p>
+  </section></div>`;
+}
+
+// ---------- QR transfer ----------
+const enc = e => QF.map(k => { const v=e[k]; if(BOOLF.has(k)) return v?1:0; if(k==="broken") return (v||[]).join("|"); if(k==="notes") return String(v||"").slice(0,1200); return v ?? ""; });
+function dec(a){
+  const e = {}; QF.forEach((k,i) => { let v=a[i]; if(BOOLF.has(k)) v=!!v; else if(k==="broken") v = v ? String(v).split("|").filter(Boolean) : []; else if(NUMF.has(k)) v=num(v); else v = v==null ? "" : String(v); e[k]=v; });
+  e.team = String(e.team); if(!e.climb) e.climb="none"; if(!e.card) e.card="none"; return e;
+}
+const pack = arr => "RS1" + JSON.stringify(arr).replace(/[\u007f-￿]/g, c => "\\u"+c.charCodeAt(0).toString(16).padStart(4,"0"));
+function qrEntries(){
+  const es = entriesNow();
+  if(S.qrMode==="all") return es;
+  const mine = new Set(S.mine), me = norm(S.form.scoutName);
+  return es.filter(e => mine.has(e.id) || (me && norm(e.scoutName)===me));
+}
+function chunks(list){
+  const out=[]; let cur=[];
+  list.forEach(e => { const a=enc(e); if(cur.length && pack([...cur,a]).length>900){ out.push(pack(cur)); cur=[]; } cur.push(a); });
+  if(cur.length) out.push(pack(cur)); return out;
+}
+function vTransfer(){
+  const camOK = SITE && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  return `<div class="view">
+  <section class="sec"><div class="sec-h"><h2>Send reports</h2><span class="tag">No internet needed</span></div>
+    <p class="legend">Show these codes to the head scout's device. Their app scans them and adds any reports it doesn't have yet.</p>
+    <div class="seg">${[["mine","My reports"],["all","Every report at this event"]].map(([v,l])=>`<button type="button" data-act="qrMode" data-v="${v}" ${pressed(S.qrMode===v)}>${l}</button>`).join("")}</div>
+    <div id="qrBox" class="qrwrap"><p class="muted">Making codes…</p></div>
+  </section>
+  <section class="sec"><div class="sec-h"><h2>Receive reports</h2><span class="tag">Head scout</span></div>
+    <div class="row">${camOK?`<button class="btn primary" data-act="scan">${S.scan?"Stop camera":"Scan with camera"}</button>`:""}
+    <label class="btn" for="qr-photo">Scan from a photo</label><input type="file" id="qr-photo" accept="image/*" capture="environment" hidden></div>
+    <video id="scanVid" class="scan" playsinline muted ${S.scan?"":"hidden"}></video>
+    <p class="legend" id="scanMsg">${S.scan?"Point the camera at a code. Hold steady about a foot away.":camOK?"":"Take a photo of the code with your camera, then pick it here."}</p>
+  </section></div>`;
+}
+async function renderQR(){
+  const box = $("#qrBox"); if(!box) return;
+  const list = qrEntries();
+  if(!list.length){ box.innerHTML = `<p class="muted">${S.qrMode==="mine"?"You haven't submitted any reports at this event on this device yet.":"No reports at this event yet."}</p>`; return; }
+  const cs = chunks(list); S.qrIdx = Math.min(S.qrIdx, cs.length-1);
+  try{ await loadScript(LIB.qr); }
+  catch{ box.innerHTML = `<p class="banner">Couldn't load the QR tool. Open the app once with internet so it's saved for offline use.</p>`; return; }
+  if(!$("#qrBox")) return;
+  const q = window.qrcode(0, "L"); q.addData(cs[S.qrIdx]); q.make();
+  const per = cs.map(c => JSON.parse(c.slice(3)).length);
+  box.innerHTML = `<img class="qr" src="${q.createDataURL(6, 2)}" alt="QR code ${S.qrIdx+1} of ${cs.length}">
+    <div class="row" style="justify-content:center"><button class="btn" data-act="qrPrev" ${S.qrIdx===0?"disabled":""}>← Prev</button><span class="mono">Code ${S.qrIdx+1} of ${cs.length} · ${per[S.qrIdx]} report${per[S.qrIdx]>1?"s":""}</span><button class="btn" data-act="qrNext" ${S.qrIdx>=cs.length-1?"disabled":""}>Next →</button></div>
+    <p class="legend">${list.length} report${list.length>1?"s":""} in ${cs.length} code${cs.length>1?"s":""}. Turn your screen brightness up.</p>`;
+}
+async function receive(text){
+  if(!text || !text.startsWith("RS1")) return null;
+  if(S.seen.has(text)) return -1; S.seen.add(text);
+  let arr; try{ arr = JSON.parse(text.slice(3)); }catch{ return null; }
+  const have = coll("entries"); let n = 0;
+  for(const a of arr){ const e = dec(a); if(!e.id) continue; e.id = safeSeg(e.id); if(have.has(e.id)) continue; await write("set","entries/"+e.id, e); n++; }
+  return n;
+}
+function reportScan(n){
+  const msg = $("#scanMsg");
+  if(n===null){ toast("That QR code isn't from REBUILT Scout."); return; }
+  if(n===-1) return;
+  buzz(); const t = n ? `Imported ${n} new report${n>1?"s":""}.` : "Already had those reports.";
+  toast(t); if(msg) msg.textContent = t + " Scan the next code when ready.";
+}
+async function startScan(){
+  try{
+    await loadScript(LIB.jsqr);
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}, audio:false});
+    S.scan = {stream}; render();
+    const v = $("#scanVid"); v.srcObject = stream; await v.play();
+    const cv = document.createElement("canvas"), ctx = cv.getContext("2d", {willReadFrequently:true});
+    let busy = false;
+    S.scan.timer = setInterval(async () => {
+      if(busy || !v.videoWidth) return; busy = true;
+      try{
+        const w = Math.min(800, v.videoWidth), h = Math.round(v.videoHeight*w/v.videoWidth);
+        cv.width=w; cv.height=h; ctx.drawImage(v,0,0,w,h);
+        const code = window.jsQR(ctx.getImageData(0,0,w,h).data, w, h, {inversionAttempts:"dontInvert"});
+        if(code) reportScan(await receive(code.data));
+      } finally { busy = false; }
+    }, 250);
+  }catch(e){ stopScan(); toast("Couldn't open the camera. Allow camera access, or use Scan from a photo."); }
+}
+function stopScan(){ if(!S.scan) return; clearInterval(S.scan.timer); try{ S.scan.stream.getTracks().forEach(t=>t.stop()); }catch{} S.scan=null; const v=$("#scanVid"); if(v){ v.hidden=true; v.srcObject=null; } }
+async function scanFile(file){
+  try{
+    await loadScript(LIB.jsqr);
+    const bmp = await createImageBitmap(file); const sc = Math.min(1, 1600/Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width*sc), h = Math.round(bmp.height*sc), cv = document.createElement("canvas"); cv.width=w; cv.height=h;
+    const ctx = cv.getContext("2d"); ctx.drawImage(bmp,0,0,w,h);
+    const code = window.jsQR(ctx.getImageData(0,0,w,h).data, w, h, {inversionAttempts:"attemptBoth"});
+    if(!code){ toast("No QR code found in that photo. Try again closer and in focus."); return; }
+    S.seen.delete(code.data); reportScan(await receive(code.data));
+  }catch{ toast("Couldn't read that photo."); }
+}
+
+// ---------- setup ----------
+function vSetup(){
+  const C = cfg(); const events = [...new Set([...coll("schedule").keys(), ...ls.get("events",[]), S.event])].filter(Boolean).sort();
+  const cf = (k,l) => `<label class="f">${l}<input type="number" id="c-${k}" data-keep="c-${k}" value="${esc(draft("c-"+k, C[k]))}" ${S.readOnly?"disabled":""}></label>`;
+  const sync = !SITE
+    ? `<p class="legend">Everyone you share this page with sees the same data, live. Use the Share menu and give scouts Contributor access so they can save reports.</p>`
+    : !HAS_FB
+    ? `<p class="legend">Team sync isn't set up on this website yet, so reports stay on each device. You can still collect them with QR codes (More → QR transfer). To turn on live sync, follow <code>SETUP.md</code> to add a free Firebase project.</p>`
+    : !S.wkey
+    ? `<p class="legend">Join your team so reports sync between everyone's devices. Ask your head scout for the team code or invite link.</p>
+       <div class="row"><input type="text" id="w-code" data-keep="wcode" placeholder="Team code" value="${esc(draft("wcode",""))}" autocomplete="off" style="flex:1;min-width:180px"><button class="btn primary" data-act="join">Join team</button></div>
+       <details><summary>Head scout: start a new team workspace</summary><div class="stack" style="margin-top:8px"><p class="legend">Do this once for your whole team, then share the invite link.</p><button class="btn" data-act="createWs" style="justify-self:start">Create team workspace</button></div></details>`
+    : `<p class="legend">Connected to your team's workspace. Send this invite link to new scouts. Anyone with it can read and add data, so share it only with your team.</p>
+       <div class="row"><input type="text" id="w-link" readonly value="${esc(inviteLink())}" style="flex:1;min-width:200px"><button class="btn" data-act="copyLink">Copy link</button></div>
+       <p class="legend">Team code: <code>${esc(S.wkey)}</code></p>
+       <button class="btn sm danger" data-act="leaveWs" style="justify-self:start">${S.confirmLeave?"Tap again to leave":"Leave this workspace"}</button>`;
+  return `<div class="view">
+  <section class="sec"><div class="sec-h"><h2>Team sync</h2><span class="tag">${S.backend==="local"?"This device only":"Connected"}</span></div>${sync}</section>
+  ${SITE?`<section class="sec"><div class="sec-h"><h2>Install</h2><span class="tag">Works offline</span></div>
+    ${S.installEvt?`<button class="btn primary" data-act="install" style="justify-self:start">Install REBUILT Scout</button>`:""}
+    <p class="legend">iPhone/iPad: tap Share, then Add to Home Screen. Android or a laptop in Chrome/Edge: use the browser menu, then Install app. After the first visit it opens without internet.</p></section>`:""}
+  <section class="sec">
+    <div class="sec-h"><h2>Event</h2><span class="tag">Tags every report you submit</span></div>
+    <div class="grid2"><label class="f">Event code${SITE?" (TBA event key)":""}<input type="text" id="d-event" data-keep="event" value="${esc(draft("event",S.event))}" placeholder="2026miket" autocapitalize="off"></label>
+    <div class="stack" style="align-content:end"><button class="btn" data-act="saveEvent">Switch event</button></div></div>
+    ${events.length>1?`<div class="row"><span class="lbl">Events:</span>${events.map(e=>`<button class="btn sm" data-evt="${esc(e)}" ${e===S.event?"disabled":""}>${esc(e)}</button>`).join("")}</div>`:""}
+    <button type="button" class="tog" data-act="showAll" ${pressed(S.showAll)}>Rank using every event together</button>
+  </section>
+  <section class="sec">
+    <div class="sec-h"><h2>Our team</h2><span class="tag">Shared</span></div>
+    <div class="grid2"><label class="f">Our team number<input type="number" id="c-ourTeam" data-keep="c-ourTeam" value="${esc(draft("c-ourTeam",C.ourTeam))}" placeholder="1234" ${S.readOnly?"disabled":""}></label>
+    ${SITE?`<label class="f">The Blue Alliance read key<input type="password" id="c-tbaKey" data-keep="c-tbaKey" value="${esc(draft("c-tbaKey",C.tbaKey))}" autocomplete="off" placeholder="From thebluealliance.com/account"></label>`:""}</div>
+    ${SITE?`<p class="legend">Get a free read key at <a href="https://www.thebluealliance.com/account" target="_blank" rel="noopener">thebluealliance.com/account</a>. It's saved for your whole team, so only one person needs to enter it.</p>`:""}
+    <button class="btn" data-act="saveCfg" style="justify-self:start" ${S.readOnly?"disabled":""}>Save</button>
+  </section>
+  <section class="sec">
+    <div class="sec-h"><h2>Scoring</h2><span class="tag">Shared by the whole team</span></div>
+    <p class="legend">Point values follow the 2026 REBUILT manual as we read it: 1 point per fuel in an active hub, 15 for a Level 1 climb in auto, and 10 / 20 / 30 for tower Levels 1–3 in teleop. Check them against the latest team update and fix them here if they changed.</p>
+    <div class="grid3">${cf("fuelAuto","Fuel (auto)")}${cf("fuelTele","Fuel (teleop)")}${cf("autoClimb","Auto climb L1")}${cf("L1","Level 1")}${cf("L2","Level 2")}${cf("L3","Level 3")}</div>
+    <span class="lbl">Ranking-point targets used in pre-match briefs</span>
+    <div class="grid3">${cf("rpFuel1","Fuel RP 1")}${cf("rpFuel2","Fuel RP 2")}${cf("rpTower","Tower RP")}</div>
+    <span class="lbl">How much each part counts toward the 0–100 score</span>
+    <div class="grid3">${cf("wPts","Match points %")}${cf("wRate","Scout ratings %")}${cf("wRel","Reliability %")}</div>
+    <div class="row"><button class="btn" data-act="saveCfg" ${S.readOnly?"disabled":""}>Save scoring</button><button class="btn" data-act="resetCfg" ${S.readOnly?"disabled":""}>Reset to defaults</button></div>
+  </section>
+  ${S.backend!=="local"?`<section class="sec">
+    <div class="sec-h"><h2>Sync</h2><span class="tag">${S.queue.length||S.pending?"Waiting":"Up to date"}</span></div>
+    <p class="legend">${S.queue.length+S.pending?`${S.queue.length+S.pending} change${S.queue.length+S.pending>1?"s are":" is"} saved on this device and will upload when the connection is back.`:"Everything you've entered is uploaded."} Bad Wi-Fi at the venue is fine: keep scouting and it catches up.</p>
+    ${S.queue.length?`<button class="btn" data-act="flush" style="justify-self:start">Try sync now</button>`:""}
+  </section>`:""}
+  <section class="sec">
+    <div class="sec-h"><h2>Export &amp; backup</h2><span class="tag">${coll("entries").size} reports loaded</span></div>
+    <div class="row"><button class="btn" data-act="csv">Match data (CSV)</button><button class="btn" data-act="csvRank">Rankings (CSV)</button><button class="btn" data-act="json">Full backup (JSON)</button></div>
+    <label class="f">Restore from a backup file<input type="file" id="d-import" accept=".json,application/json" ${S.readOnly?"disabled":""}></label>
+  </section></div>`;
+}
+const inviteLink = () => `${location.origin}${location.pathname}?team=${encodeURIComponent(S.wkey)}`;
+
+// ---------- team panel ----------
+function renderTeam(){
+  const root=$("#overlayRoot");
+  if(!S.openTeam){ root.innerHTML=""; return; }
+  const sc = $(".panel")?.scrollTop || 0;
+  const t=String(S.openTeam), list=entriesNow(), r=statsFor(t);
+  const pit=teamsNow().get(t)||{}; const es=list.filter(e=>String(e.team)===t).sort((a,b)=>num(a.match)-num(b.match));
+  const notes=notesNow().filter(n=>String(n.team)===t);
+  const matchNotes=es.filter(e=>e.notes).map(e=>({text:e.notes,tag:"match",scoutName:e.scoutName,ts:e.ts,match:e.match}));
+  const nd=S.noteDraft||{text:"",tag:"weakness"};
+  const mal=r.mal||{}; const bm=Object.entries(r.brokenMechs||{}); const inCmp=S.compare.includes(t);
+  root.innerHTML = `<div class="overlay" data-act="closeTeam"><div class="panel" role="dialog" aria-label="Team ${esc(t)}">
+    <div class="ph-head"><div><div class="big">${esc(t)}</div><div class="muted">${esc(teamName(t)||"Name not entered")}</div></div>
+      <div class="stat" style="padding:6px 12px;margin-left:auto"><div class="k">Score${r.rank?` · #${r.rank}`:""}</div><div class="v">${f1(r.score)}</div></div>
+      <button class="btn" data-act="closeTeam" aria-label="Close">✕</button></div>
+    <div class="stats">
+      <div class="stat"><div class="k">Avg points</div><div class="v">${f1(r.pts)}</div></div>
+      <div class="stat"><div class="k">Auto pts</div><div class="v">${f1(r.auto)}</div></div>
+      <div class="stat"><div class="k">Fuel / match</div><div class="v">${f1(r.fuel)}</div></div>
+      <div class="stat"><div class="k">Fuel / volley</div><div class="v">${f1(r.perVolley)}</div></div>
+      <div class="stat"><div class="k">Accuracy</div><div class="v">${pct(r.acc)}</div></div>
+      <div class="stat"><div class="k">Climb rate</div><div class="v">${pct(r.climbRate)}</div></div>
+    </div>
+    <div class="row"><button class="btn" data-pl="add" data-t="${esc(t)}" ${picklist().order.includes(t)?"disabled":""}>${picklist().order.includes(t)?"On the picklist":"Add to picklist"}</button>
+    <button class="btn" data-act="cmpToggle" data-t="${esc(t)}">${inCmp?"Remove from compare":"Compare"}</button></div>
+    <section class="sec"><div class="sec-h"><h2>Trend</h2><span class="tag">Points per match</span></div>
+      ${lineChart([{label:t, color:"var(--s1)", points:seriesPts(r)}], {avg:r.series.length>1?r.pts:null, label:`Points per match for team ${t}`})}</section>
+    <section class="sec"><div class="sec-h"><h2>Robot</h2><span class="tag">Pit + match reports</span></div>
+      <div class="row">
+        <span class="pill">Drive: ${esc(LBL[pit.drive||r.drive]||"—")}</span>
+        <span class="pill">Aim: ${esc(LBL[pit.aim||r.aim]||"—")}</span>
+        <span class="pill">Flow: ${esc(LBL[pit.flow||r.flow]||"—")}</span>
+        <span class="pill">Best climb: ${esc(r.bestClimb!=="none"?LBL[r.bestClimb]:(pit.climbMax&&pit.climbMax!=="none"?pit.climbMax+" (pit)":"—"))}</span>
+        ${pit.capacity?`<span class="pill">Holds ${esc(pit.capacity)} fuel</span>`:""}
+        ${pit.trench?`<span class="pill">Trench: ${esc(pit.trench)}</span>`:""}${pit.bump?`<span class="pill">Bump: ${esc(pit.bump)}</span>`:""}
+        ${r.defense?`<span class="pill">Played defense ${r.defense}×</span>`:""}
+      </div>
+      ${pit.auto?`<div><span class="lbl">Auto</span><p style="white-space:pre-wrap">${esc(pit.auto)}</p></div>`:""}
+      ${pit.strategy?`<div><span class="lbl">Strategy</span><p style="white-space:pre-wrap">${esc(pit.strategy)}</p></div>`:""}
+      ${pit.weaknesses?`<div><span class="lbl">Weaknesses</span><p style="white-space:pre-wrap">${esc(pit.weaknesses)}</p></div>`:""}
+      <button class="btn sm" data-act="editPit" data-t="${esc(t)}" style="justify-self:start">${pit.num?"Edit pit profile":"Add pit profile"}</button>
+    </section>
+    <section class="sec"><div class="sec-h"><h2>Ratings</h2><span class="tag">Average of scouts</span></div>
+      <div class="bars">${RATINGS.map(([k,l])=>{const v=r.ratings?.[k];return `<div class="barrow"><span>${esc(l)}</span><span class="track"><i style="width:${v?v/5*100:0}%"></i></span><span class="mono">${f1(v)}</span></div>`;}).join("")}</div>
+    </section>
+    <section class="sec"><div class="sec-h"><h2>Reliability</h2><span class="tag">${r.n||0} reports</span></div>
+      <div class="row">
+        ${[["noShow","No-show"],["died","Died"],["stuck","Stuck"],["tipped","Tipped"],["broke","Broke"]].map(([k,l])=>`<span class="pill ${mal[k]?"bad":"good"}">${l}: ${mal[k]||0}</span>`).join("")}
+        ${bm.map(([m,c])=>`<span class="pill bad">${esc(LBL[m]||m)} not working: ${c}</span>`).join("")}
+        <span class="pill ${mal.fouls?"warn":""}">Fouls: ${mal.fouls||0}</span>
+      </div>
+    </section>
+    <section class="sec"><div class="sec-h"><h2>Notes</h2><span class="tag">Everyone can add</span></div>
+      <textarea id="n-text" placeholder="Their intake can't grab fuel off the bump. Push them there.">${esc(nd.text)}</textarea>
+      <div class="row"><div class="seg" style="flex:1">${[["weakness","Weakness"],["strength","Strength"],["strategy","Strategy"],["general","General"]].map(([v,l])=>`<button type="button" data-ntag="${v}" ${pressed(nd.tag===v)}>${l}</button>`).join("")}</div>
+      <button class="btn" data-act="addNote" data-t="${esc(t)}" ${S.readOnly?"disabled":""}>Add note</button></div>
+      <div class="notes">${[...notes,...matchNotes].sort((a,b)=>(b.ts||0)-(a.ts||0)).map(n=>`<div class="note ${esc(n.tag)}"><div class="meta"><b>${esc(n.tag==="match"?"Match "+n.match:n.tag)}</b><span>${esc(n.scoutName||"Scout")}</span><span>${n.ts?new Date(n.ts).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):""}</span>${n.id&&!S.readOnly?`<button class="btn sm" data-act="delNote" data-id="${esc(n.id)}" style="margin-left:auto">Delete</button>`:""}</div><p>${esc(n.text)}</p></div>`).join("")||`<p class="muted">No notes yet.</p>`}</div>
+    </section>
+    <section class="sec"><div class="sec-h"><h2>Match history</h2><span class="tag">${esc(S.showAll?"All events":S.event)}</span></div>
+      ${es.length?`<div class="tw"><table><thead><tr><th class="l">Match</th><th>Pts</th><th>Auto fuel</th><th>Tele fuel</th><th>Miss</th><th class="l">Climb</th><th class="l">Problems</th><th class="l">Scout</th><th></th></tr></thead><tbody>
+      ${es.map(e=>{const probs=[e.noShow&&"No-show",e.m_died&&"Died",e.m_stuck&&"Stuck",e.m_tipped&&"Tipped",e.m_broke&&"Broke",...(e.broken||[]).map(m=>LBL[m]+" out"),e.card&&e.card!=="none"&&e.card+" card"].filter(Boolean);
+        return `<tr><td class="l"><span class="mono">Q${esc(e.match)}</span> <span class="pill ${e.alliance==="blue"?"tn-blue":"tn-red"}">${esc(e.alliance||"")}</span></td><td class="num">${entryPts(e)}</td><td class="num">${num(e.autoFuel)}</td><td class="num">${num(e.teleFuel)}</td><td class="num">${num(e.autoMiss)+num(e.teleMiss)}</td><td class="l">${esc(LBL[e.climb]||"—")}</td><td class="l">${probs.length?probs.map(p=>`<span class="pill bad">${esc(p)}</span>`).join(" "):`<span class="pill good">None</span>`}</td><td class="l">${esc(e.scoutName||"")}</td>
+        <td>${S.readOnly?"":`<button class="btn sm danger" data-act="delEntry" data-id="${esc(e.id)}">${S.confirmDel===e.id?"Confirm delete":"Delete"}</button>`}</td></tr>`;}).join("")}</tbody></table></div>`:`<p class="muted">No match reports for this team${S.showAll?"":" at this event"} yet.</p>`}
+    </section>
+  </div></div>`;
+  const p=$(".panel"); if(p) p.scrollTop=sc;
+}
+
+// ---------- actions ----------
+async function submitMatch(){
+  const F=S.form;
+  if(!F.team || !F.match){ toast("Enter the match number and team number first."); $(!F.match?"#f-match":"#f-team")?.focus(); return; }
+  if(!F.scoutName.trim()){ toast("Add your name so the team knows who scouted this."); $("#f-scoutName")?.focus(); return; }
+  const id = `${evKey()}_${num(F.match)}_${num(F.team)}_${rid()}`;
+  const e = {...F, id, event:S.event, team:String(num(F.team)), match:num(F.match), scoutName:F.scoutName.trim(), scoutId:S.uid||null, ts:Date.now()};
+  ["autoFuel","autoMiss","teleFuel","teleMiss","volleys","fouls",...RATINGS.map(r=>r[0])].forEach(k=>e[k]=num(e[k]));
+  const res = await write("set", "entries/"+id, e);
+  if(res===false) return;
+  S.mine = [...S.mine.slice(-400), id]; ls.set("mine", S.mine);
+  toast(res==="queued" ? `Saved on this device. Team ${e.team} uploads when you're back online.` : res==="local" ? `Team ${e.team}, match ${e.match} saved on this device.` : `Team ${e.team}, match ${e.match} saved.`);
+  ls.set("scoutName", F.scoutName.trim());
+  S.form = blankForm(F); saveDraft();
+  if(S.timer?.id) clearInterval(S.timer.id); S.timer=null; releaseWake();
+  render(); scrollTo(0,0);
+}
+async function savePit(){
+  const p=S.pit; if(!p.num){ toast("Enter a team number."); return; }
+  const k=String(num(p.num)); const old=teamsNow().get(k)||{};
+  const events=[...new Set([...(old.events||[]), S.event])];
+  const {id, ...rest} = {...old, ...p};
+  const res = await write("set","teams/"+k,{...rest,num:k,events,ts:Date.now(),by:S.form.scoutName||""});
+  if(res!==false) toast(`Team ${k} profile saved.`);
+}
+async function savePick(pl){ await write("set","picklist/"+evKey(), {order:pl.order, dnp:pl.dnp, ts:Date.now()}); render(); }
+function setEvent(v){
+  S.event = v; ls.set("event", v); ls.set("events", [...new Set([...ls.get("events",[]), v])].slice(-20));
+  S.brief = null; delete S.drafts.event; subscribeEntries(); render();
+}
+
+async function tbaImport(){
+  const C = cfg(), key = String(C.tbaKey||"").trim(), ev = S.event.trim().toLowerCase();
+  if(!key){ toast("Add a TBA read key in More → Setup."); return; }
+  toast(`Loading ${ev} from The Blue Alliance…`);
+  const get = async path => { const r = await fetch(`https://www.thebluealliance.com/api/v3/${path}`, {headers:{"X-TBA-Auth-Key":key}}); if(!r.ok) throw r.status; return r.json(); };
+  try{
+    const [ms, ts] = await Promise.all([get(`event/${ev}/matches/simple`), get(`event/${ev}/teams/simple`)]);
+    const matches = ms.filter(m=>m.comp_level==="qm").sort((a,b)=>a.match_number-b.match_number).map(m=>({
+      n:m.match_number, red:m.alliances.red.team_keys.map(k=>k.replace("frc","")), blue:m.alliances.blue.team_keys.map(k=>k.replace("frc","")),
+      rs:m.alliances.red.score??-1, bs:m.alliances.blue.score??-1, t:m.predicted_time||m.time||null }));
+    const names = {}; ts.forEach(t => names[t.team_number] = t.nickname || "");
+    await write("set","schedule/"+evKey(), {matches, names, source:"tba", ts:Date.now()});
+    toast(matches.length ? `Imported ${matches.length} matches and ${ts.length} teams.` : `Imported ${ts.length} teams. The match schedule isn't posted yet; try again later.`);
+    render();
+  }catch(e){
+    toast(e===401 ? "The Blue Alliance rejected the key. Check it in More → Setup." : e===404 ? `No event "${ev}" on The Blue Alliance. Use the TBA event key as your event code.` : "Couldn't reach The Blue Alliance. Check your connection.");
+  }
+}
+async function pasteSchedule(){
+  const txt = $("#sch-paste").value; const matches = [];
+  txt.split(/\n/).forEach(line => { const n = (line.match(/\d+/g)||[]).map(Number); if(n.length>=7) matches.push({n:n[0], red:n.slice(1,4).map(String), blue:n.slice(4,7).map(String), rs:-1, bs:-1}); });
+  if(!matches.length){ toast("No matches found. Each line needs 7 numbers."); return; }
+  const old = scheduleFor() || {};
+  await write("set","schedule/"+evKey(), {matches, names:old.names||{}, source:"manual", ts:Date.now()});
+  delete S.drafts.schPaste; toast(`Saved ${matches.length} matches.`); render();
+}
+
+function csvOf(rows){ return rows.map(r=>r.map(v=>{ const s=String(v??""); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }).join(",")).join("\n"); }
+async function offer(filename, data){
+  if(SITE){
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], {type: filename.endsWith(".json") ? "application/json" : "text/csv"}));
+    a.download = filename; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500); return;
+  }
+  let dl=null; try{ dl = await window.claude?.use?.("downloads"); }catch{}
+  if(!dl){ toast("Downloads aren't available in this view."); return; }
+  try{ await dl.save({filename, data}); }catch(e){ if(e?.code!=="declined") toast("Couldn't save the file."); }
+}
+
+// ---------- events ----------
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("button, [data-act], [data-open], [data-brief], th[data-sort]"); if(!b) return;
+  if(b.classList.contains("overlay") && ev.target!==b) return;
+  const F=S.form, d=b.dataset;
+  if(d.tab){ setTab(d.tab); return; }
+  if(d.sub){ setSub(d.sub, d.v); return; }
+  if(d.goto){ S.sub[d.goto]=d.v||S.sub[d.goto]; setTab(d.goto); return; }
+  if(d.count){ F[d.count]=Math.max(0,num(F[d.count])+num(d.d)); $("#v-"+d.count).textContent=F[d.count]; saveDraft(); buzz(); return; }
+  if(d.tog){ F[d.tog]=!F[d.tog]; b.setAttribute("aria-pressed",F[d.tog]); saveDraft(); return; }
+  if(d.pick){ const isR = d.pick.startsWith("r_"); const v = isR ? num(d.v) : d.v;
+    F[d.pick] = (!isR && F[d.pick]===v && !["climb","card"].includes(d.pick)) ? "" : v;
+    b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(F[d.pick])===x.dataset.v)); saveDraft(); return; }
+  if(d.mech){ F.broken = F.broken.includes(d.mech) ? F.broken.filter(m=>m!==d.mech) : [...F.broken, d.mech]; b.setAttribute("aria-pressed",F.broken.includes(d.mech)); saveDraft(); return; }
+  if(d.pit){ S.pit[d.pit] = S.pit[d.pit]===d.v ? "" : d.v; b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", S.pit[d.pit]===x.dataset.v)); return; }
+  if(d.ntag){ S.noteDraft={text:$("#n-text")?.value||"", tag:d.ntag}; b.parentElement.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x.dataset.ntag===d.ntag)); return; }
+  if(d.sort){ S.sort = S.sort.key===d.sort ? {key:d.sort, dir:-S.sort.dir} : {key:d.sort, dir: ["team","rank","issues"].includes(d.sort)?1:-1}; render(); return; }
+  if(d.open){ S.openTeam=d.open; S.noteDraft=null; S.confirmDel=null; renderTeam(); return; }
+  if(d.brief){ S.brief=num(d.brief); S.sub.matches="brief"; ls.set("sub",S.sub); render(); scrollTo(0,0); return; }
+  if(d.evt){ setEvent(d.evt); toast(`Switched to ${d.evt}.`); return; }
+  if(d.pl){
+    const pl=picklist(), t=d.t, i=pl.order.indexOf(t);
+    if(d.pl==="add" && i<0) pl.order.push(t);
+    if(d.pl==="addAll") rankAll().forEach(r=>{ if(!pl.order.includes(r.team)) pl.order.push(r.team); });
+    if(d.pl==="rm") pl.order.splice(i,1);
+    if(d.pl==="up" && i>0) [pl.order[i-1],pl.order[i]]=[pl.order[i],pl.order[i-1]];
+    if(d.pl==="down" && i<pl.order.length-1) [pl.order[i+1],pl.order[i]]=[pl.order[i],pl.order[i+1]];
+    if(d.pl==="dnp") pl.dnp = pl.dnp.includes(t) ? pl.dnp.filter(x=>x!==t) : [...pl.dnp,t];
+    await savePick(pl); if(d.pl==="add" && S.openTeam) toast(`Team ${t} added to the picklist.`); return;
+  }
+  switch(d.act){
+    case "timer": startTimer(); break;
+    case "timerStop": if(S.timer?.id) clearInterval(S.timer.id); S.timer=null; releaseWake(); $("#timerBox").innerHTML=timerIdle(); break;
+    case "submit": submitMatch(); break;
+    case "clear": if(b.dataset.armed){ const m=F.match; S.form=blankForm(); S.form.match=m; saveDraft(); render(); } else { b.dataset.armed="1"; b.textContent="Tap again to clear"; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.armed; b.textContent="Clear form"; } },3000); } break;
+    case "fillAssign": { const sch=scheduleFor(); const m=sch&&sch.matches.find(x=>x.n===num(d.m)); if(!m) return; const p=d.p;
+      Object.assign(F, {match:String(m.n), team:teamAt(m,p), alliance:p[0]==="R"?"red":"blue", station:p[1]}); saveDraft(); render(); $("#s-setup")?.scrollIntoView({block:"start"}); break; }
+    case "pitSave": savePit(); break;
+    case "pitClear": S.pit=null; render(); break;
+    case "editPit": { const t=d.t; S.pit={...blankPit(), name:teamName(t), ...(teamsNow().get(t)||{}), num:t}; S.openTeam=null; renderTeam(); S.sub.scout="pit"; setTab("scout"); break; }
+    case "closeTeam": if(ev.target===b || b.tagName==="BUTTON"){ S.openTeam=null; S.confirmDel=null; renderTeam(); } break;
+    case "addNote": { const text=$("#n-text").value.trim(); if(!text){ toast("Write the note first."); return; }
+      const id=rid(), tag=(S.noteDraft||{}).tag||"weakness";
+      const res=await write("set","notes/"+id,{id,team:d.t,text,tag,event:S.event,scoutName:S.form.scoutName||ls.get("scoutName",""),scoutId:S.uid||null,ts:Date.now()});
+      if(res!==false){ S.noteDraft={text:"",tag}; toast("Note added."); renderTeam(); } break; }
+    case "delNote": await write("delete","notes/"+d.id); renderTeam(); break;
+    case "delEntry": if(S.confirmDel===d.id){ S.confirmDel=null; await write("delete","entries/"+d.id); toast("Report deleted."); renderSoft(); renderTeam(); } else { S.confirmDel=d.id; renderTeam(); } break;
+    case "cmpToggle": { const t=d.t, i=S.compare.indexOf(t); if(i>=0) S.compare[i]=null; else { const j=S.compare.indexOf(null); if(j<0){ toast("Compare holds 4 teams. Remove one first."); return; } S.compare[j]=t; } ls.set("compare",S.compare); renderTeam(); if(S.tab==="teams") render(); toast(i>=0?"Removed from compare.":`Team ${t} added to Teams → Compare.`); break; }
+    case "cmpAdd": case "cmpQuick": { const t=String(num(d.act==="cmpQuick"?d.t:$("#cmp-in").value)); if(t==="0"){ toast("Enter a team number."); return; } if(S.compare.includes(t)) return; const j=S.compare.indexOf(null); if(j<0) return; S.compare[j]=t; ls.set("compare",S.compare); delete S.drafts.cmp; render(); break; }
+    case "cmpRm": S.compare[num(d.i)]=null; ls.set("compare",S.compare); render(); break;
+    case "briefGo": render(); break;
+    case "roSave": { const scouts=[...new Set($("#ro-names").value.split(/\n/).map(s=>s.trim()).filter(Boolean))]; const shift=Math.max(1,num($("#ro-shift").value)||6);
+      const r=await write("set","roster/"+evKey(),{scouts,shift,ts:Date.now()}); if(r!==false){ delete S.drafts.roNames; delete S.drafts.roShift; toast(`Roster saved: ${scouts.length} scouts.`); render(); } break; }
+    case "onlyMe": S.onlyMe=!S.onlyMe; render(); break;
+    case "tba": tbaImport(); break;
+    case "schPaste": pasteSchedule(); break;
+    case "qrMode": S.qrMode=d.v; S.qrIdx=0; render(); break;
+    case "qrPrev": S.qrIdx=Math.max(0,S.qrIdx-1); renderQR(); break;
+    case "qrNext": S.qrIdx++; renderQR(); break;
+    case "scan": if(S.scan){ stopScan(); render(); } else startScan(); break;
+    case "saveEvent": { const v=$("#d-event").value.trim(); if(!v){ toast("Enter an event code."); return; } setEvent(v); toast(`Now scouting ${v}.`); break; }
+    case "showAll": S.showAll=!S.showAll; subscribeEntries(); render(); break;
+    case "saveCfg": case "resetCfg": {
+      let c;
+      if(d.act==="resetCfg") c={...DEFAULT_CFG, ourTeam:cfg().ourTeam, tbaKey:cfg().tbaKey};
+      else { c={...cfg()}; NUM_CFG.forEach(k=>{ const el=$("#c-"+k); if(el) c[k]=num(el.value); }); const o=$("#c-ourTeam"); if(o) c.ourTeam=String(o.value||"").trim(); const tk=$("#c-tbaKey"); if(tk) c.tbaKey=String(tk.value||"").trim(); }
+      const r=await write("set","config/scoring",c);
+      if(r!==false){ S.cfg=c; Object.keys(S.drafts).filter(k=>k.startsWith("c-")).forEach(k=>delete S.drafts[k]); toast(d.act==="resetCfg"?"Scoring reset.":"Saved for the whole team."); render(); } break; }
+    case "flush": flush(); break;
+    case "join": { const v=String($("#w-code").value||"").trim(); const m=v.match(/team=([A-Za-z0-9]+)/); const code=m?m[1]:v.replace(/[^A-Za-z0-9]/g,""); if(code.length<16){ toast("That team code looks too short. Paste the whole code or invite link."); return; } ls.set("wkey",code); location.reload(); break; }
+    case "createWs": { const a=new Uint8Array(16); crypto.getRandomValues(a); const code=[...a].map(x=>x.toString(16).padStart(2,"0")).join(""); ls.set("wkey",code); location.reload(); break; }
+    case "copyLink": { const el=$("#w-link"); try{ await navigator.clipboard.writeText(el.value); toast("Invite link copied."); }catch{ el.select(); toast("Select the link and copy it."); } break; }
+    case "leaveWs": if(S.confirmLeave){ ls.set("wkey",""); location.reload(); } else { S.confirmLeave=true; render(); setTimeout(()=>{ S.confirmLeave=false; },4000); } break;
+    case "install": if(S.installEvt){ S.installEvt.prompt(); try{ await S.installEvt.userChoice; }catch{} S.installEvt=null; render(); } break;
+    case "csv": { const es=[...coll("entries").values()].sort((a,b)=>String(a.event).localeCompare(String(b.event))||num(a.match)-num(b.match));
+      const cols=["event","match","team","alliance","station","scoutName","noShow","autoLeave","autoFuel","autoMiss","autoClimb","teleFuel","teleMiss","volleys","flow","aim","drive","defense","bump","trench","climb",...RATINGS.map(r=>r[0]),"m_died","m_stuck","m_tipped","m_broke","broken","fouls","card","notes"];
+      await offer(`rebuilt-scouting-${evKey()}.csv`, csvOf([[...cols,"points"],...es.map(e=>[...cols.map(c=>Array.isArray(e[c])?e[c].join("|"):e[c]),entryPts(e)])])); break; }
+    case "csvRank": { const rows=rankAll();
+      await offer(`rebuilt-rankings-${evKey()}.csv`, csvOf([["rank","team","name","score","avg_points","auto_points","fuel_per_match","fuel_per_volley","accuracy","tower_points","climb_rate","best_climb","rating","issue_rate","aim","flow","drive","reports"],
+        ...rows.map(r=>[r.rank,r.team,teamName(r.team),f1(r.score),f1(r.pts),f1(r.auto),f1(r.fuel),f1(r.perVolley),r.acc==null?"":Math.round(r.acc*100),f1(r.tower),r.climbRate==null?"":Math.round(r.climbRate*100),r.bestClimb,f1(r.rating),r.issues==null?"":Math.round(r.issues*100),r.aim||"",r.flow||"",r.drive||"",r.n])])); break; }
+    case "json": { const dump = n => [...coll(n).entries()].map(([k,v])=>({...v,id:k}));
+      await offer(`rebuilt-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({app:"rebuilt-scout",version:2,entries:dump("entries"),teams:dump("teams"),notes:dump("notes"),picklists:dump("picklist"),schedules:dump("schedule"),rosters:dump("roster"),config:cfg()})); break; }
+  }
+});
+document.addEventListener("input", ev => {
+  const el=ev.target, d=el.dataset;
+  if(d.f){ S.form[d.f]=el.value; saveDraft(); }
+  if(d.p){ S.pit[d.p]=el.value; }
+  if(d.keep){ S.drafts[d.keep]=el.value; }
+  if(d.bt){ const [al,i]=d.bt.split("-"); S.briefTeams[al][num(i)]=String(el.value||"").trim(); }
+  if(el.id==="f-filter"){ S.filter=el.value; const pos=el.selectionStart; render(); const n=$("#f-filter"); n.focus(); try{n.setSelectionRange(pos,pos);}catch{} }
+  if(el.id==="n-text"){ S.noteDraft={...(S.noteDraft||{tag:"weakness"}), text:el.value}; }
+});
+document.addEventListener("change", async ev => {
+  const el=ev.target;
+  if(el.id==="f-scoutName"){ ls.set("scoutName", el.value.trim()); const box=$("#assignBox"); if(box) box.innerHTML=assignCard(); }
+  if(el.id==="p-num"){ const k=String(num(el.value)); const t=teamsNow().get(k); if(t){ S.pit={...blankPit(),...t,num:k}; render(); toast(`Loaded team ${k}'s profile.`); } else if(!S.pit.name && teamName(k)){ S.pit.name=teamName(k); const n=$("#p-name"); if(n) n.value=S.pit.name; } }
+  if(el.id==="b-match"){ S.brief = el.value==="custom" ? "custom" : num(el.value); render(); }
+  if(el.id==="qr-photo" && el.files?.[0]){ await scanFile(el.files[0]); el.value=""; }
+  if(el.id==="d-import" && el.files?.[0]){
+    try{
+      const data=JSON.parse(await el.files[0].text()); let n=0;
+      const put = async (c, list, keyOf) => { for(const x of list||[]){ const k=keyOf(x); if(!k) continue; const {id, ...rest} = x; await write("set", `${c}/${safeSeg(k)}`, c==="entries"||c==="notes" ? {...x, id:safeSeg(k)} : rest); n++; } };
+      await put("entries", data.entries, x=>x&&x.id); await put("teams", data.teams, x=>x&&(x.num||x.id)); await put("notes", data.notes, x=>x&&x.id);
+      await put("picklist", data.picklists, x=>x&&x.id); await put("schedule", data.schedules, x=>x&&x.id); await put("roster", data.rosters, x=>x&&x.id);
+      toast(`Restored ${n} records.`); render();
+    }catch{ toast("That file isn't a REBUILT Scout backup."); }
+    el.value="";
+  }
+});
+document.addEventListener("keydown", ev => { if(ev.key==="Escape" && S.openTeam){ S.openTeam=null; renderTeam(); } });
+// chart tooltips
+const tip = $("#tip");
+document.addEventListener("pointerover", ev => { const h=ev.target.closest && ev.target.closest("[data-tip]"); if(!h){ tip.hidden=true; return; } tip.textContent=h.dataset.tip; tip.hidden=false; placeTip(ev); });
+document.addEventListener("pointermove", ev => { if(!tip.hidden) placeTip(ev); });
+function placeTip(ev){ const w=tip.offsetWidth, x=Math.min(innerWidth-w-8, Math.max(8, ev.clientX-w/2)); tip.style.left=x+"px"; tip.style.top=Math.max(8, ev.clientY-44)+"px"; }
+addEventListener("scroll", () => { tip.hidden=true; }, {passive:true, capture:true});
+
+// ---------- backends ----------
+function subscribeColl(name, q){
+  return q.onSnapshot(snap => {
+    const m = new Map(); snap.docs.forEach(d => { const x = d.data(); m.set(d.id, {...x, id:x.id||d.id}); });
+    S.c[name] = m; S.live = true; renderSoft();
+  }, err => { if(S.backend==="claude"){ S.live=false; setSync(); } else if(err && err.code==="permission-denied") toast("The team database refused access. Check the team code in More → Setup."); });
+}
+function subscribeEntries(){
+  if(!S.db) return;
+  if(S.entriesUnsub) S.entriesUnsub();
+  const c = S.db.collection("entries");
+  S.entriesUnsub = subscribeColl("entries", S.showAll ? c : c.where("event","==",S.event));
+}
+function subscribeAll(){
+  subscribeEntries();
+  COLLS.filter(n=>n!=="entries").forEach(n => subscribeColl(n, S.db.collection(n)));
+  S.db.doc("config/scoring").onSnapshot(s => { S.cfg = s.exists ? {...DEFAULT_CFG, ...s.data()} : {...DEFAULT_CFG}; renderSoft(); }, ()=>{});
+}
+let fbStarting = false;
+async function initFirebase(){
+  if(fbStarting || S.db) return; fbStarting = true;
+  try{
+    for(const u of LIB.fb) await loadScript(u);
+    const fb = window.firebase;
+    if(!fb.apps.length){ fb.initializeApp(CONF.firebase); try{ await fb.firestore().enablePersistence({synchronizeTabs:true}); }catch{} }
+    const auth = fb.auth();
+    const user = await new Promise(res => { const un = auth.onAuthStateChanged(u => { un(); res(u); }); });
+    if(!user) await auth.signInAnonymously();
+    S.uid = auth.currentUser.uid;
+    const fs = fb.firestore(), base = `w/${S.wkey}`;
+    S.db = { doc: p => fs.doc(`${base}/${p}`), collection: p => fs.collection(`${base}/${p}`) };
+    S.backend = "firebase"; S.live = true;
+    subscribeAll(); flush();
+  }catch(e){
+    console.warn("Team sync unavailable:", e);
+    if(navigator.onLine) toast("Couldn't connect to team sync. Reports are saved on this device for now.");
+  }finally{ fbStarting = false; S.connecting = false; setSync(); render(); }
+}
+async function initClaude(){
+  if(!window.claude?.use){ S.connecting=false; setSync(); return; }
+  const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+  if(user){ S.uid = await user.id(); const cw = await user.can("data.write"); if(cw===false) S.readOnly=true; }
+  S.connecting = false;
+  if(!db){ setSync(); render(); return; }
+  S.db = db; S.backend = "claude"; S.live = true; setSync();
+  subscribeAll(); flush(); render();
+}
+
+// ---------- boot ----------
+if(SITE){
+  const p = new URLSearchParams(location.search).get("team");
+  if(p && /^[A-Za-z0-9]{16,}$/.test(p)){ ls.set("wkey", p); S.wkey = p; history.replaceState(null, "", location.pathname); }
+  addEventListener("beforeinstallprompt", e => { e.preventDefault(); S.installEvt = e; if(S.tab==="more") render(); });
+  if("serviceWorker" in navigator && location.protocol!=="file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+markNav(); render();
+if(SITE){ if(HAS_FB && S.wkey) initFirebase(); else { S.connecting=false; setSync(); render(); } }
+else initClaude();
+})();
+</script>
+</body>
+</html>
