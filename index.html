@@ -23,8 +23,8 @@
   --red:#c8323a; --red-soft:#f8dfe0; --blue:#1d4fbf; --blue-soft:#dde5f8;
   --good:#1d8a4e; --good-soft:#d9f0e2; --warn:#b26a00; --warn-soft:#fbe9cc; --bad:#c8323a; --bad-soft:#f8dfe0;
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
-  --cat:#0b7fbf; --cat-op:.34;
-  --card:color-mix(in srgb, var(--surface) 80%, transparent);
+  --cat:#0b7fbf; --cat-op:.5;
+  --card:color-mix(in srgb, var(--surface) 74%, transparent);
   --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
@@ -36,7 +36,7 @@
   --red:#ff6b72; --red-soft:#3d1c1f; --blue:#5b84ff; --blue-soft:#1a2547;
   --good:#4cc782; --good-soft:#163323; --warn:#f0a53a; --warn-soft:#3a2a12; --bad:#ff6b72; --bad-soft:#3d1c1f;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
-  --cat:#82d8fb; --cat-op:.26;
+  --cat:#82d8fb; --cat-op:.42;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0b131b; --surface:#121e29; --surface-2:#182836; --line:#253848; --fg:#e5f0f7; --muted:#90a7b8;
@@ -44,7 +44,7 @@
   --red:#ff6b72; --red-soft:#3d1c1f; --blue:#5b84ff; --blue-soft:#1a2547;
   --good:#4cc782; --good-soft:#163323; --warn:#f0a53a; --warn-soft:#3a2a12; --bad:#ff6b72; --bad-soft:#3d1c1f;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
-  --cat:#82d8fb; --cat-op:.26;
+  --cat:#82d8fb; --cat-op:.42;
   color-scheme:dark}
 *{box-sizing:border-box}
 html,body{background:var(--bg);color:var(--fg)}
@@ -81,9 +81,10 @@ p{margin:0}
 
 main{padding-block:16px 24px;position:relative;z-index:1}
 /* background cat: fixed, faint, never intercepts taps */
-.catbg{position:fixed;right:-24px;bottom:calc(64px + env(safe-area-inset-bottom,0px));width:min(620px,112vw);z-index:0;pointer-events:none;color:var(--cat);opacity:var(--cat-op)}
+.catbg{position:fixed;right:-24px;bottom:calc(64px + env(safe-area-inset-bottom,0px));width:min(780px,150vw);z-index:0;pointer-events:none;color:var(--cat);opacity:var(--cat-op)}
 .catbg svg{display:block;width:100%;height:auto}
-.catbg .w{fill:none;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:700px){.catbg{right:-90px}}
+.catbg .w{fill:none;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
 .catbg .wr{stroke:var(--red)} .catbg .wb{stroke:var(--blue)}
 .view{display:grid;gap:14px}
 .sec{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:12px;min-width:0}
@@ -267,38 +268,48 @@ details summary{cursor:pointer;font-weight:600}
 </head>
 <body>
 <div class="catbg" aria-hidden="true">
-  <svg viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg">
-    <!-- dangling wires the cat is batting at -->
-    <path class="w wr" d="M262 -10 C268 50 236 92 262 128 C280 152 262 166 274 176"/>
-    <g class="w wr" transform="translate(274 176) rotate(35)"><rect x="-8" y="0" width="16" height="22" rx="3"/><path d="M-4 22 L-4 30 M4 22 L4 30"/></g>
-    <path class="w wb" d="M284 -10 C292 40 270 70 300 100 C330 130 302 148 318 160"/>
-    <circle class="w wb" cx="320" cy="163" r="4"/>
-    <!-- tangle on the floor -->
-    <path class="w wb" d="M30 341 C70 300 120 360 100 330 C80 300 160 290 170 330 C180 365 240 300 250 338 C256 356 300 352 330 341"/>
-    <path class="w wr" d="M40 341 C90 320 110 370 140 336 C165 308 205 320 200 343 C196 360 260 318 290 345"/>
-    <rect class="w wr" x="22" y="328" width="18" height="14" rx="2"/>
+  <svg viewBox="0 0 600 380" xmlns="http://www.w3.org/2000/svg">
+    <!-- soft fills so the cat and ball read as shapes -->
+    <g fill="currentColor" fill-opacity=".14">
+      <path d="M338 182 C332 160 338 140 348 130 L343 92 L372 122 C380 120 390 120 398 122 L422 90 L424 132 C432 148 432 172 422 188 C408 208 356 210 338 182 Z"/>
+      <path d="M352 203 C332 228 326 276 336 341 L432 341 C456 342 478 338 484 318 C498 268 468 212 415 200 C400 206 366 208 352 203 Z"/>
+      <path d="M349 232 C330 240 316 252 306 260 L296 282 C316 274 330 264 344 254 Z"/>
+    </g>
+    <circle cx="238" cy="298" r="42" fill="var(--blue)" fill-opacity=".1"/>
+    <!-- ball of wires -->
+    <circle class="w wb" cx="238" cy="298" r="42"/>
+    <ellipse class="w wr" cx="238" cy="298" rx="41" ry="15" transform="rotate(-30 238 298)"/>
+    <ellipse class="w wb" cx="238" cy="298" rx="41" ry="22" transform="rotate(40 238 298)"/>
+    <ellipse class="w wr" cx="238" cy="298" rx="36" ry="11" transform="rotate(82 238 298)"/>
+    <ellipse class="w wb" cx="238" cy="298" rx="30" ry="26" transform="rotate(-70 238 298)"/>
+    <path class="w wr" d="M210 276 C226 290 250 280 262 306 M218 322 C232 306 252 326 266 312"/>
+    <!-- loose strands: one trailing to a plug, one hooked on the paw -->
+    <path class="w wr" d="M202 318 C172 342 150 318 128 338 C108 356 90 330 70 338"/>
+    <g class="w wr" transform="translate(66 338) rotate(100)"><rect x="-8" y="0" width="16" height="22" rx="3"/><path d="M-4 22 L-4 30 M4 22 L4 30"/></g>
+    <path class="w wb" d="M252 258 C260 226 300 226 300 252"/>
+    <path class="w wb" d="M196 300 C168 290 160 262 176 248 C188 238 200 252 190 262"/>
     <g class="w" stroke="currentColor">
       <path d="M20 342 L580 342" stroke-width="2" stroke-dasharray="2 9"/>
-      <!-- head -->
+      <!-- head, eyes on the ball -->
       <path d="M338 182 C332 160 338 140 348 130 L343 92 L372 122 C380 120 390 120 398 122 L422 90 L424 132 C432 148 432 172 422 188 C408 208 356 210 338 182 Z"/>
-      <path d="M350 122 L347 104 L363 119 M408 120 L418 102 L419 124" stroke-width="2.5"/>
+      <path d="M350 122 L347 104 L363 119 M408 120 L418 102 L419 124" stroke-width="3"/>
       <ellipse cx="364" cy="160" rx="9" ry="11"/><ellipse cx="400" cy="160" rx="9" ry="11"/>
       <path d="M382 182 Q382 190 374 190 M382 182 Q382 190 390 190"/>
-      <path d="M350 180 L318 172 M350 186 L316 188 M414 180 L446 172 M414 186 L448 188" stroke-width="2.5"/>
+      <path d="M350 180 L318 172 M350 186 L316 188 M414 180 L446 172 M414 186 L448 188" stroke-width="3"/>
       <!-- body, legs, tail -->
       <path d="M352 203 C332 228 326 276 336 340"/>
       <path d="M415 200 C468 212 498 268 484 318 C478 338 456 342 432 341"/>
       <path d="M474 300 C454 286 428 296 426 341"/>
-      <path d="M366 262 C366 290 364 318 364 341 M336 341 C338 333 362 333 366 341 M366 341 L432 341"/>
-      <path d="M349 228 C330 214 314 200 302 186 M342 250 C320 236 302 222 290 206"/>
-      <circle cx="292" cy="192" r="13"/>
-      <path d="M282 184 L279 180 M290 180 L289 175 M299 182 L301 178" stroke-width="2.5"/>
+      <path d="M366 266 C366 292 364 318 364 341 M336 341 C338 333 362 333 366 341 M366 341 L432 341"/>
+      <!-- paw batting the ball -->
+      <path d="M349 232 C330 240 316 252 306 260 M344 254 C330 264 316 274 302 282"/>
+      <circle cx="298" cy="270" r="13"/>
+      <path d="M286 264 L282 261 M286 273 L281 274 M290 281 L287 285" stroke-width="3"/>
+      <path d="M318 238 Q328 246 322 256 M330 230 Q342 244 334 258" stroke-width="3"/>
       <path d="M482 322 C530 330 552 292 530 268 C516 254 500 266 510 280"/>
-      <!-- a fuel ball it's ignoring -->
-      <circle cx="562" cy="327" r="14"/><path d="M552 320 Q562 327 572 320 M554 334 Q562 330 570 334" stroke-width="2"/>
     </g>
     <g fill="currentColor">
-      <circle cx="360" cy="155" r="4"/><circle cx="396" cy="155" r="4"/>
+      <circle cx="359" cy="164" r="4.5"/><circle cx="395" cy="164" r="4.5"/>
       <path d="M377 176 L387 176 L382 182 Z"/>
     </g>
   </svg>
