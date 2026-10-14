@@ -1,5 +1,5 @@
 // Offline support: the app shell and its libraries are cached so the app opens with no internet.
-const V = "rebuilt-scout-v2";
+const V = "rebuilt-scout-v3";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png"];
 const CDN = ["cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
 
