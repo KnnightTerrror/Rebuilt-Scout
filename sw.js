@@ -1,10 +1,19 @@
 // Offline support: the app shell and its libraries are cached so the app opens with no internet.
-const V = "rebuilt-scout-v3";
+const V = "rebuilt-scout-v4";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png"];
 const CDN = ["cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
+// Libraries the app loads later (QR codes, team sync). Saved at install so they work with no signal.
+const LIBS = [
+  "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js",
+  "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+  ...["app", "auth", "firestore"].map(m => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${m}-compat.js`)
+];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(V).then(async c => {
+    await c.addAll(SHELL);
+    await Promise.all(LIBS.map(u => fetch(u, { mode: "no-cors" }).then(r => c.put(u, r)).catch(() => {})));
+  }).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim()));
