@@ -1,11 +1,12 @@
 // Offline support: the app shell and its libraries are cached so the app opens with no internet.
-const V = "rebuilt-scout-v4";
+const V = "rebuilt-scout-v5";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png"];
-const CDN = ["cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
+const CDN = ["cdn.jsdelivr.net", "cdnjs.cloudflare.com", "fonts.googleapis.com", "fonts.gstatic.com"];
 // Libraries the app loads later (QR codes, team sync). Saved at install so they work with no signal.
 const LIBS = [
   "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js",
   "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
   ...["app", "auth", "firestore"].map(m => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${m}-compat.js`)
 ];
 

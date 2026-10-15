@@ -338,6 +338,7 @@ details summary{cursor:pointer;font-weight:600}
 </nav>
 
 <div id="overlayRoot"></div>
+<div id="copyRoot"></div>
 <div id="toastRoot" aria-live="polite"></div>
 <div id="tip" hidden></div>
 
@@ -353,6 +354,7 @@ const HAS_FB = SITE && !!(CONF.firebase && CONF.firebase.apiKey);
 const LIB = {
   qr: "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js",
   jsqr: "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+  xlsx: "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",
   fb: ["app","auth","firestore"].map(m => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${m}-compat.js`)
 };
 
@@ -639,8 +641,9 @@ function render(){
   else if(S.tab==="teams") m.innerHTML = subnav("teams",[["rank","Rankings"],["compare","Compare"]]) + (sub==="compare" ? vCompare() : vRank());
   else if(S.tab==="matches") m.innerHTML = subnav("matches",[["schedule","Schedule"],["brief","Pre-match"],["scouts","Scouts"]]) + (sub==="brief" ? vBrief() : sub==="scouts" ? vScouts() : vSchedule());
   else if(S.tab==="pick") m.innerHTML = vPick();
-  else m.innerHTML = subnav("more",[["check","Data check"],["transfer","QR transfer"],["setup","Setup"]]) + (sub==="check" ? vCheck() : sub==="transfer" ? vTransfer() : vSetup());
+  else m.innerHTML = subnav("more",[["check","Data check"],["transfer","QR transfer"],["export","Export"],["setup","Setup"]]) + (sub==="check" ? vCheck() : sub==="transfer" ? vTransfer() : sub==="export" ? vExport() : vSetup());
   if(S.tab==="more" && sub==="transfer") renderQR();
+  if(S.tab==="more" && sub==="export") loadScript(LIB.xlsx).catch(()=>{});
   renderTeam();
 }
 const isTyping = root => { const a=document.activeElement; return !!(a && root && root.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type!=="file"); };
@@ -797,7 +800,7 @@ function vRank(){
   const C=cfg(), our=String(C.ourTeam||"");
   return `<div class="view">
   <div class="sec-h"><h2 class="page-h">Team rankings</h2><span class="tag">${rows.length} teams · ${n} match reports</span></div>
-  <input type="search" id="f-filter" placeholder="Find a team number or name" value="${esc(S.filter)}">
+  <div class="row"><input type="search" id="f-filter" placeholder="Find a team number or name" value="${esc(S.filter)}" style="flex:1;min-width:180px"><button class="btn" data-act="copySheet" data-i="0">Copy for spreadsheet</button></div>
   <div class="tw"><table>
     <thead><tr>${th("rank","#","l")}${th("team","Team","l")}${th("score","Score")}${th("pts","Avg pts")}${th("auto","Auto")}${th("fuel","Fuel")}${th("perVolley","Fuel/volley")}${th("acc","Acc")}${th("climb","Climb")}${th("rating","Rating")}${th("issues","Issues")}<th class="l">Shooter</th>${th("n","Reports")}</tr></thead>
     <tbody>${shown.map(r=>{
@@ -1011,7 +1014,7 @@ function vPick(){
   </section>
   <section class="sec">
     <div class="sec-h"><h2>Add teams</h2><span class="tag">Sorted by score</span></div>
-    ${avail.length?`<div class="row">${avail.map(r=>`<button class="btn sm" data-pl="add" data-t="${esc(r.team)}"><span class="mono">${esc(r.team)}</span> <span class="muted">${f1(r.score)}</span></button>`).join("")}</div><button class="btn" data-pl="addAll" style="justify-self:start">Add all in ranking order</button>`:`<p class="muted">Every scouted team is already on the list.</p>`}
+    ${avail.length?`<div class="row">${avail.map(r=>`<button class="btn sm" data-pl="add" data-t="${esc(r.team)}"><span class="mono">${esc(r.team)}</span> <span class="muted">${f1(r.score)}</span></button>`).join("")}</div><div class="row"><button class="btn" data-pl="addAll">Add all in ranking order</button>${pl.order.length?`<button class="btn" data-act="copySheet" data-i="4">Copy picklist for spreadsheet</button>`:""}</div>`:`<p class="muted">Every scouted team is already on the list.</p>`}
   </section></div>`;
 }
 
@@ -1178,9 +1181,88 @@ function vSetup(){
     <p class="legend">${S.queue.length+S.pending?`${S.queue.length+S.pending} change${S.queue.length+S.pending>1?"s are":" is"} saved on this device and will upload when the connection is back.`:"Everything you've entered is uploaded."} Bad Wi-Fi at the venue is fine: keep scouting and it catches up.</p>
     ${S.queue.length?`<button class="btn" data-act="flush" style="justify-self:start">Try sync now</button>`:""}
   </section>`:""}
-  <section class="sec">
-    <div class="sec-h"><h2>Export &amp; backup</h2><span class="tag">${coll("entries").size} reports loaded</span></div>
-    <div class="row"><button class="btn" data-act="csv">Match data (CSV)</button><button class="btn" data-act="csvRank">Rankings (CSV)</button><button class="btn" data-act="json">Full backup (JSON)</button></div>
+  <section class="sec"><div class="sec-h"><h2>Export &amp; backup</h2></div>
+    <p class="legend">Spreadsheet copies, Excel and CSV downloads, and backups are in More → Export.</p>
+    <button class="btn" data-goto="more" data-v="export" style="justify-self:start">Open Export</button>
+  </section></div>`;
+}
+
+// ---------- spreadsheet export ----------
+const rnd = v => v==null ? "" : Math.round(v*10)/10;
+const pc = v => v==null ? "" : Math.round(v*100);
+const yn = v => v ? "Yes" : "No";
+const when = ts => ts ? new Date(ts).toLocaleString([], {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+function rowsRankings(){
+  return [["Rank","Team","Name","Score","Avg points","Auto points","Fuel per match","Fuel per volley","Accuracy %","Tower points","Climb rate %","Best climb","Avg rating","Issue rate %","Aim","Flow","Drive","Reports"],
+    ...rankAll().map(r=>[r.rank??"", num(r.team), teamName(r.team), rnd(r.score), rnd(r.pts), rnd(r.auto), rnd(r.fuel), rnd(r.perVolley), pc(r.acc), rnd(r.tower), pc(r.climbRate), r.bestClimb==="none"?"":LBL[r.bestClimb], rnd(r.rating), pc(r.issues), LBL[r.aim]||"", LBL[r.flow]||"", LBL[r.drive]||"", r.n])];
+}
+function rowsMatches(){
+  const es = entriesNow().slice().sort((a,b)=>String(a.event).localeCompare(String(b.event)) || num(a.match)-num(b.match) || num(a.team)-num(b.team));
+  return [["Event","Match","Team","Alliance","Station","Scout","No-show","Left start","Auto fuel","Auto missed","Auto climb","Teleop fuel","Teleop missed","Volleys","Shooter flow","Aiming","Drivetrain","Played defense","Over bump","Under trench","Climb",...RATINGS.map(r=>r[1]),"Died","Stuck","Tipped","Broke","Not working","Fouls","Card","Points","Notes"],
+    ...es.map(e=>[e.event, num(e.match), num(e.team), e.alliance==="red"?"Red":e.alliance==="blue"?"Blue":"", e.station||"", e.scoutName||"", yn(e.noShow), yn(e.autoLeave), num(e.autoFuel), num(e.autoMiss), yn(e.autoClimb), num(e.teleFuel), num(e.teleMiss), num(e.volleys),
+      LBL[e.flow]||"", LBL[e.aim]||"", LBL[e.drive]||"", yn(e.defense), yn(e.bump), yn(e.trench), LBL[e.climb]||"", ...RATINGS.map(([k])=>num(e[k])||""),
+      yn(e.m_died), yn(e.m_stuck), yn(e.m_tipped), yn(e.m_broke), (e.broken||[]).map(m=>LBL[m]||m).join(", "), num(e.fouls), e.card&&e.card!=="none"?e.card:"", entryPts(e), e.notes||""])];
+}
+function rowsPit(){
+  return [["Team","Name","Drivetrain","Aiming","Shooter flow","Fuel capacity","Fits under trench","Crosses bump","Highest climb","Auto routines","Strategy","Weaknesses","Events"],
+    ...[...teamsNow().entries()].sort((a,b)=>num(a[0])-num(b[0])).map(([k,t])=>[num(k), t.name||teamName(k), LBL[t.drive]||"", LBL[t.aim]||"", LBL[t.flow]||"", t.capacity===""||t.capacity==null?"":num(t.capacity), t.trench||"", t.bump||"", t.climbMax&&t.climbMax!=="none"?t.climbMax:"", t.auto||"", t.strategy||"", t.weaknesses||"", (t.events||[]).join(", ")])];
+}
+function rowsNotes(){
+  const ns = notesNow().filter(n=>S.showAll || !n.event || n.event===S.event).map(n=>[num(n.team), n.tag||"", n.text||"", n.scoutName||"", n.event||"", "", when(n.ts), n.ts||0]);
+  const ms = entriesNow().filter(e=>e.notes).map(e=>[num(e.team), "match", e.notes, e.scoutName||"", e.event||"", num(e.match), when(e.ts), e.ts||0]);
+  return [["Team","Type","Note","Scout","Event","Match","Time"], ...[...ns,...ms].sort((a,b)=>a[0]-b[0] || b[7]-a[7]).map(r=>r.slice(0,7))];
+}
+function rowsPicklist(){
+  const pl = picklist(), byT = rankMap();
+  return [["Pick order","Team","Name","Do not pick","Score","Avg points","Best climb","Issue rate %"],
+    ...pl.order.map((t,i)=>{ const r=byT[t]||{}; return [i+1, num(t), teamName(t), pl.dnp.includes(t)?"DNP":"", rnd(r.score), rnd(r.pts), r.bestClimb&&r.bestClimb!=="none"?LBL[r.bestClimb]:"", pc(r.issues)]; })];
+}
+function rowsSchedule(){
+  const sch = scheduleFor(), A = assignments(); if(!sch) return [["Match"]];
+  return [["Match",...POS.map(p=>POS_LBL[p]),"Red score","Blue score",...(A.size?POS.map(p=>`Scout ${POS_LBL[p]}`):[])],
+    ...[...sch.matches].sort((a,b)=>a.n-b.n).map(m=>[m.n, ...POS.map(p=>num(teamAt(m,p))||""), played(m)?m.rs:"", played(m)?m.bs:"", ...(A.size?POS.map(p=>(A.get(m.n)||{})[p]||""):[])])];
+}
+const SHEETS = () => [["Rankings",rowsRankings],["Match reports",rowsMatches],["Pit scouting",rowsPit],["Notes",rowsNotes],["Picklist",rowsPicklist],["Schedule",rowsSchedule]];
+// text that starts like a formula is kept as plain text, so a note can never run as a spreadsheet formula
+const plain = v => v==null ? "" : (typeof v==="string" && /^[=+\-@\t\r]/.test(v) ? "'"+v : v);
+const toTSV = rows => rows.map(r=>r.map(v=>String(plain(v)).replace(/[\t\r\n]+/g," ")).join("\t")).join("\n");
+const toCSV = rows => "﻿" + rows.map(r=>r.map(v=>{ const x=String(plain(v)); return /[",\n\r]/.test(x) ? `"${x.replace(/"/g,'""')}"` : x; }).join(",")).join("\r\n");
+async function copyRows(rows, label){
+  const text = toTSV(rows);
+  try{ await navigator.clipboard.writeText(text); toast(`Copied ${rows.length-1} row${rows.length===2?"":"s"}. Click cell A1 in your sheet and paste.`); }
+  catch{ showCopyBox(text, label); }
+}
+function showCopyBox(text, label){
+  $("#copyRoot").innerHTML = `<div class="overlay" style="justify-content:center;align-items:center" data-act="closeCopy"><div class="sec" style="width:min(560px,calc(100% - 32px));background:var(--surface)" role="dialog" aria-label="Copy ${esc(label)}">
+    <div class="sec-h"><h2>Copy ${esc(label)}</h2><button class="btn sm" data-act="closeCopy">Close</button></div>
+    <p class="legend">This browser blocked automatic copying, so the table is selected below. Press Ctrl+C (⌘C on a Mac), or long-press and choose Copy, then paste into cell A1.</p>
+    <textarea id="copyText" readonly style="min-height:200px;font-family:var(--f-mono);font-size:12px;white-space:pre">${esc(text)}</textarea></div></div>`;
+  const t = $("#copyText"); t.focus(); t.select();
+}
+async function exportXlsx(){
+  try{ await loadScript(LIB.xlsx); }catch{ toast("Couldn't load the Excel tool. Connect to the internet and try again."); return; }
+  const X = window.XLSX, wb = X.utils.book_new();
+  SHEETS().forEach(([name, fn]) => {
+    const rows = fn(), ws = X.utils.aoa_to_sheet(rows.map(r=>r.map(v=>v==null?"":v)));
+    ws["!cols"] = rows[0].map((_,i)=>({wch: Math.min(48, Math.max(6, ...rows.slice(0,300).map(r=>String(r[i]??"").length+2)))}));
+    X.utils.book_append_sheet(wb, ws, name);
+  });
+  await offer(`rebuilt-scout-${S.showAll?"all-events":evKey()}.xlsx`, X.write(wb, {bookType:"xlsx", type:"array"}));
+}
+function vExport(){
+  const sets = SHEETS().map(([n,fn])=>[n, fn().length-1]);
+  return `<div class="view">
+  <section class="sec"><div class="sec-h"><h2>Spreadsheets</h2><span class="tag">Google Sheets · Excel</span></div>
+    <p class="legend">Tap Copy, then click cell A1 in Google Sheets or Excel and paste (Ctrl+V, or ⌘V on a Mac). Every value lands in its own cell. Exports cover ${S.showAll?"every event":`event ${esc(S.event)}`}; switch events in Setup.</p>
+    <button class="btn primary" data-act="xlsx" style="justify-self:start">Download Excel workbook</button>
+    <p class="legend">One .xlsx file with a tab for each table below. To open it in Google Sheets, use File → Import → Upload.</p>
+  </section>
+  <div class="tw"><table><thead><tr><th class="l">Table</th><th>Rows</th><th class="l">Paste into a sheet</th><th class="l">File</th></tr></thead><tbody>
+  ${sets.map(([name,n],i)=>`<tr><td class="l">${esc(name)}</td><td class="num">${n}</td><td class="l"><button class="btn sm" data-act="copySheet" data-i="${i}" ${n<1?"disabled":""}>Copy</button></td><td class="l"><button class="btn sm" data-act="csvSheet" data-i="${i}" ${n<1?"disabled":""}>CSV</button></td></tr>`).join("")}
+  </tbody></table></div>
+  <section class="sec"><div class="sec-h"><h2>Backup</h2><span class="tag">${coll("entries").size} reports loaded</span></div>
+    <p class="legend">A full backup holds everything from every event: reports, pit profiles, notes, picklists, schedules and rosters. Restoring adds it back without deleting anything.</p>
+    <button class="btn" data-act="json" style="justify-self:start">Download full backup (JSON)</button>
     <label class="f">Restore from a backup file<input type="file" id="d-import" accept=".json,application/json" ${S.readOnly?"disabled":""}></label>
   </section></div>`;
 }
@@ -1312,15 +1394,16 @@ async function pasteSchedule(){
   delete S.drafts.schPaste; toast(`Saved ${matches.length} matches.`); render();
 }
 
-function csvOf(rows){ return rows.map(r=>r.map(v=>{ const s=String(v??""); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }).join(",")).join("\n"); }
+const MIME = {json:"application/json", csv:"text/csv;charset=utf-8", xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"};
 async function offer(filename, data){
   if(SITE){
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], {type: filename.endsWith(".json") ? "application/json" : "text/csv"}));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], {type: MIME[filename.split(".").pop()] || "application/octet-stream"}));
     a.download = filename; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500); return;
   }
   let dl=null; try{ dl = await window.claude?.use?.("downloads"); }catch{}
   if(!dl){ toast("Downloads aren't available in this view."); return; }
-  try{ await dl.save({filename, data}); }catch(e){ if(e?.code!=="declined") toast("Couldn't save the file."); }
+  try{ await dl.save({filename, data}); }
+  catch(e){ if(e?.code==="declined") return; toast(["rejected_extension","extension_not_enabled"].includes(e?.code) ? "This view can't save that file type. Use Copy or CSV instead." : "Couldn't save the file."); }
 }
 
 // ---------- events ----------
@@ -1397,12 +1480,10 @@ document.addEventListener("click", async ev => {
     case "copyLink": { const el=$("#w-link"); try{ await navigator.clipboard.writeText(el.value); toast("Invite link copied."); }catch{ el.select(); toast("Select the link and copy it."); } break; }
     case "leaveWs": if(S.confirmLeave){ ls.set("wkey",""); location.reload(); } else { S.confirmLeave=true; render(); setTimeout(()=>{ S.confirmLeave=false; },4000); } break;
     case "install": if(S.installEvt){ S.installEvt.prompt(); try{ await S.installEvt.userChoice; }catch{} S.installEvt=null; render(); } break;
-    case "csv": { const es=[...coll("entries").values()].sort((a,b)=>String(a.event).localeCompare(String(b.event))||num(a.match)-num(b.match));
-      const cols=["event","match","team","alliance","station","scoutName","noShow","autoLeave","autoFuel","autoMiss","autoClimb","teleFuel","teleMiss","volleys","flow","aim","drive","defense","bump","trench","climb",...RATINGS.map(r=>r[0]),"m_died","m_stuck","m_tipped","m_broke","broken","fouls","card","notes"];
-      await offer(`rebuilt-scouting-${evKey()}.csv`, csvOf([[...cols,"points"],...es.map(e=>[...cols.map(c=>Array.isArray(e[c])?e[c].join("|"):e[c]),entryPts(e)])])); break; }
-    case "csvRank": { const rows=rankAll();
-      await offer(`rebuilt-rankings-${evKey()}.csv`, csvOf([["rank","team","name","score","avg_points","auto_points","fuel_per_match","fuel_per_volley","accuracy","tower_points","climb_rate","best_climb","rating","issue_rate","aim","flow","drive","reports"],
-        ...rows.map(r=>[r.rank,r.team,teamName(r.team),f1(r.score),f1(r.pts),f1(r.auto),f1(r.fuel),f1(r.perVolley),r.acc==null?"":Math.round(r.acc*100),f1(r.tower),r.climbRate==null?"":Math.round(r.climbRate*100),r.bestClimb,f1(r.rating),r.issues==null?"":Math.round(r.issues*100),r.aim||"",r.flow||"",r.drive||"",r.n])])); break; }
+    case "copySheet": { const [name, fn] = SHEETS()[num(d.i)]; copyRows(fn(), name.toLowerCase()); break; }
+    case "csvSheet": { const [name, fn] = SHEETS()[num(d.i)]; await offer(`rebuilt-${name.toLowerCase().replace(/\s+/g,"-")}-${S.showAll?"all-events":evKey()}.csv`, toCSV(fn())); break; }
+    case "xlsx": exportXlsx(); break;
+    case "closeCopy": if(ev.target===b || b.tagName==="BUTTON") $("#copyRoot").innerHTML=""; break;
     case "json": { const dump = n => [...coll(n).entries()].map(([k,v])=>({...v,id:k}));
       await offer(`rebuilt-backup-${new Date().toISOString().slice(0,10)}.json`, JSON.stringify({app:"rebuilt-scout",version:2,entries:dump("entries"),teams:dump("teams"),notes:dump("notes"),picklists:dump("picklist"),schedules:dump("schedule"),rosters:dump("roster"),config:cfg()})); break; }
   }
